@@ -1,14 +1,15 @@
 export default function TasksLoading() {
   return (
-    <div className="min-h-screen bg-gray-50 animate-pulse pb-24">
-      <div className="h-16 bg-white shadow-sm sticky top-0" />
-      <div className="max-w-lg mx-auto px-6 pt-4 space-y-3">
-        <div className="h-20 bg-white rounded-2xl" />
+    <div className="min-h-screen bg-[var(--color-bg)] pb-nav">
+      <div className="h-[68px] bg-[var(--color-bg-card)] shadow-[var(--shadow-sm)] sticky top-0" />
+      <div className="max-w-lg mx-auto px-6 pt-4 flex flex-col gap-3">
+        <div className="skeleton h-20 rounded-[var(--border-radius)]" />
+        <div className="h-4" />
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="h-16 bg-white rounded-2xl" />
+          <div key={i} className="skeleton h-16 rounded-[var(--border-radius)]" />
         ))}
       </div>
-      <div className="fixed bottom-0 left-0 right-0 h-20 bg-white border-t border-gray-100" />
+      <span className="sr-only" role="status">Loading today&apos;s tasks</span>
     </div>
   );
 }

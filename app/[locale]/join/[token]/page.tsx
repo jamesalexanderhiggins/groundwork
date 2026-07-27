@@ -1,6 +1,9 @@
-import { redirect }                   from 'next/navigation';
+import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
-import { AcceptInviteForm }            from '@/components/trusted/AcceptInviteForm';
+import { AcceptInviteForm } from '@/components/trusted/AcceptInviteForm';
+
+export const metadata = { title: 'Join a family' };
 
 interface Props {
   params: Promise<{ token: string; locale: string }>;
@@ -10,50 +13,65 @@ export default async function JoinPage({ params }: Props) {
   const { token } = await params;
   const supabase  = await createServerSupabaseClient();
 
-  // Check invitation validity before showing the form
   const { data: invite } = await supabase
     .from('trusted_invitations')
     .select('id, email, family_id, expires_at, used')
     .eq('token', token)
-    .single();
+    .maybeSingle();
 
-  const now = new Date().toISOString();
+  const expired = !invite || invite.used || new Date(invite.expires_at) < new Date();
 
-  if (!invite || invite.used || invite.expires_at < now) {
+  if (expired) {
     return (
-      <main className="min-h-screen bg-gray-50 flex items-center justify-center px-6">
+      <main className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center px-6">
         <div className="text-center max-w-sm">
-          <p className="text-5xl mb-4">❌</p>
-          <h1 className="font-bold text-xl text-gray-900 mb-2">Invalid invitation</h1>
-          <p className="text-gray-500 text-sm">
-            This link has expired or already been used. Ask your family to send a new one.
+          <p className="text-5xl mb-4" aria-hidden="true">⌛</p>
+          <h1 className="font-bold text-xl text-[var(--color-text)] mb-2">
+            This invitation has expired
+          </h1>
+          <p className="opacity-60 text-sm text-[var(--color-text)]">
+            The link has already been used or is more than seven days old.
+            Ask the family to send you a new one.
           </p>
+          <Link
+            href="/login"
+            className="inline-block mt-6 text-sm text-[var(--color-primary)] font-medium hover:underline"
+          >
+            Go to sign in
+          </Link>
         </div>
       </main>
     );
   }
 
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect(`/login?redirect=/join/${token}`);
+  // Preserve the invite through sign-in so the link is not lost.
+  if (!user) redirect(`/login?next=/join/${token}`);
 
+  // The column is `name` — `family_name` does not exist and silently
+  // returned null, so the invite always read "the family".
   const { data: family } = await supabase
     .from('families')
-    .select('family_name')
+    .select('name')
     .eq('id', invite.family_id)
-    .single();
+    .maybeSingle();
 
   return (
-    <main className="min-h-screen bg-gray-50 flex items-center justify-center px-6">
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-lg overflow-hidden">
-        <div className="bg-gradient-to-br from-indigo-500 to-purple-600 px-6 py-8 text-center">
-          <p className="text-4xl mb-2">⭐</p>
-          <h1 className="font-bold text-white text-xl">You&apos;re invited!</h1>
-          <p className="text-white/80 text-sm mt-1">
-            Join the {family?.family_name ?? 'family'} as a Trusted Adult
+    <main className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center px-6 py-10">
+      <div className="w-full max-w-sm card overflow-hidden">
+        <div className="bg-[var(--color-primary)] px-6 py-8 text-center">
+          <p className="text-4xl mb-2" aria-hidden="true">⭐</p>
+          <h1 className="font-bold text-white text-xl">You&apos;re invited</h1>
+          <p className="text-white/85 text-sm mt-1">
+            Join {family?.name ?? 'this family'} as a trusted adult
           </p>
         </div>
 
         <div className="p-6">
+          <p className="text-sm opacity-60 text-[var(--color-text)] mb-4">
+            Trusted adults can send golden gifts. They cannot change tasks,
+            settings or anyone&apos;s balance.
+          </p>
           <AcceptInviteForm token={token} />
         </div>
       </div>
