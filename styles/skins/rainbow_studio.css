@@ -1,0 +1,13 @@
+.skin-rainbow_studio {
+  --color-primary:   #FF6B6B;
+  --color-bg:        #FFF9C4;
+  --color-bg-card:   #FFFFFF;
+  --color-text:      #2C2C2C;
+  --color-accent:    #4ECDC4;
+  --color-reward:    #FFD700;
+  --font-display:    'Comic Sans MS', cursive, sans-serif;
+  --font-body:       system-ui, sans-serif;
+  --animation-speed: 0.25s;
+  --border-radius:   1.5rem;
+  --sound-pack:      'bright';
+}

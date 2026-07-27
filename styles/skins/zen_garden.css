@@ -1,0 +1,13 @@
+.skin-zen_garden {
+  --color-primary:   #6B7280;
+  --color-bg:        #F9F9F7;
+  --color-bg-card:   #FFFFFF;
+  --color-text:      #374151;
+  --color-accent:    #9CA3AF;
+  --color-reward:    #D4AF37;
+  --font-display:    'Noto Serif JP', Georgia, serif;
+  --font-body:       Georgia, serif;
+  --animation-speed: 0.5s;
+  --border-radius:   0rem;
+  --sound-pack:      'zen';
+}

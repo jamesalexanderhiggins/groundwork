@@ -1,0 +1,13 @@
+.skin-cloud_kingdom {
+  --color-primary:   #7C9FF5;
+  --color-bg:        #F0F4FF;
+  --color-bg-card:   #FFFFFF;
+  --color-text:      #2D2D5E;
+  --color-accent:    #FFC2D1;
+  --color-reward:    #FFD700;
+  --font-display:    system-ui, sans-serif;
+  --font-body:       system-ui, sans-serif;
+  --animation-speed: 0.3s;
+  --border-radius:   1rem;
+  --sound-pack:      'cloud';
+}

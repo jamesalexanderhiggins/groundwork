@@ -1,0 +1,13 @@
+.skin-jungle_quest {
+  --color-primary:   #2D6A4F;
+  --color-bg:        #D8F3DC;
+  --color-bg-card:   #FFFFFF;
+  --color-text:      #1B4332;
+  --color-accent:    #95D5B2;
+  --color-reward:    #FFD700;
+  --font-display:    system-ui, sans-serif;
+  --font-body:       system-ui, sans-serif;
+  --animation-speed: 0.3s;
+  --border-radius:   0.75rem;
+  --sound-pack:      'jungle';
+}

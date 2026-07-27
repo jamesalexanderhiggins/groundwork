@@ -1,0 +1,26 @@
+{
+  "name": "Kempt",
+  "short_name": "Kempt",
+  "description": "Your family's AI-powered life OS",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#7C9FF5",
+  "theme_color": "#7C9FF5",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "categories": ["productivity", "education", "lifestyle"]
+}

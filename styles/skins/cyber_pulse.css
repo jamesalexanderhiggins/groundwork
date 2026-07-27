@@ -1,0 +1,13 @@
+.skin-cyber_pulse {
+  --color-primary:   #00FF41;
+  --color-bg:        #0D0D0D;
+  --color-bg-card:   #111111;
+  --color-text:      #00FF41;
+  --color-accent:    #00BFFF;
+  --color-reward:    #FFD700;
+  --font-display:    'Share Tech Mono', 'Courier New', monospace;
+  --font-body:       'Roboto Mono', 'Courier New', monospace;
+  --animation-speed: 0.15s;
+  --border-radius:   2px;
+  --sound-pack:      'cyber';
+}

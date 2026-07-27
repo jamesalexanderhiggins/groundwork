@@ -1,0 +1,13 @@
+.skin-dark_knight {
+  --color-primary:   #7B2FBE;
+  --color-bg:        #0A0A0F;
+  --color-bg-card:   #12121A;
+  --color-text:      #D4D4DC;
+  --color-accent:    #4B0082;
+  --color-reward:    #C0A060;
+  --font-display:    'Cinzel', Georgia, serif;
+  --font-body:       Georgia, serif;
+  --animation-speed: 0.35s;
+  --border-radius:   0.125rem;
+  --sound-pack:      'gothic';
+}
