@@ -48,6 +48,7 @@ export function TaskTapButton({
 }: TaskTapButtonProps) {
   const [done,      setDone]      = useState(false);
   const [pending,   setPending]   = useState(false);
+  const [capped,    setCapped]    = useState(false);
   const [loading,   setLoading]   = useState(false);
   const [error,     setError]     = useState('');
   const [showBonus, setShowBonus] = useState(false);
@@ -102,6 +103,12 @@ export function TaskTapButton({
     if ('pendingApproval' in result && result.pendingApproval) {
       setPending(true);
       return;
+    }
+
+    // Weekly routine cap reached. The task still counts; the coins stop.
+    // Stated plainly and without blame, per the no-shame rule.
+    if ('cappedOut' in result && result.cappedOut) {
+      setCapped(true);
     }
 
     SoundManager.play('complete', skin);
@@ -182,6 +189,11 @@ export function TaskTapButton({
             {pending && (
               <span className="block text-xs text-[var(--color-reward)] mt-0.5">
                 Waiting for a grown-up to check
+              </span>
+            )}
+            {capped && (
+              <span className="block text-xs opacity-60 text-[var(--color-text)] mt-0.5">
+                Done — you&apos;ve hit this week&apos;s routine max. Bonus tasks still pay.
               </span>
             )}
           </div>

@@ -1,25 +1,22 @@
 import { redirect }       from 'next/navigation';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
-import { getActiveProfile } from '@/app/actions/profile';
+import { getCurrentProfile } from '@/lib/current-profile';
+import { getServiceActs } from '@/app/actions/service-acts';
+import { ServiceActForm } from '@/components/higgy/ServiceActForm';
 import { getTodayCompletions } from '@/app/actions/tasks';
 import { TaskTapButton }  from '@/components/higgy/TaskTapButton';
 import { BottomNav }      from '@/components/higgy/BottomNav';
 import { CurrencyDisplay } from '@/components/higgy/CurrencyDisplay';
+import { PreferenceProvider } from '@/components/shared/PreferenceProvider';
 
 export default async function BulletinPage() {
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const activeProfileId = await getActiveProfile();
-  if (!activeProfileId) redirect('/dashboard');
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('display_name, family_id, skin, cognitive_mode')
-    .eq('id', activeProfileId)
-    .single();
-  if (!profile) redirect('/dashboard');
+  const profile = await getCurrentProfile();
+  if (!profile) redirect('/onboarding');
+  const activeProfileId = profile.id;
 
   const { data: family } = await supabase
     .from('families')
@@ -42,10 +39,12 @@ export default async function BulletinPage() {
     .order('sort_order', { ascending: true });
 
   const completedIds = await getTodayCompletions(activeProfileId);
+  const serviceActs  = await getServiceActs(activeProfileId, 5);
   const skinClass = `skin-${profile.skin ?? 'cloud_kingdom'}`;
 
   return (
     <div className={skinClass}>
+      <PreferenceProvider cognitiveMode={profile.cognitive_mode} />
       <main className="min-h-screen bg-[var(--color-bg)] pb-24">
         <header className="bg-[var(--color-bg-card)] shadow-sm px-6 py-4 sticky top-0 z-10">
           <div className="max-w-lg mx-auto">
@@ -65,7 +64,8 @@ export default async function BulletinPage() {
           </div>
         </header>
 
-        <div className="px-6 pt-4 max-w-lg mx-auto">
+        <div className="px-6 pt-4 max-w-lg mx-auto flex flex-col gap-8">
+          <section>
           {(!bonusTasks || bonusTasks.length === 0) ? (
             <div className="text-center py-16 opacity-50 text-[var(--color-text)]">
               <p className="text-4xl mb-3">📭</p>
@@ -92,6 +92,25 @@ export default async function BulletinPage() {
               ))}
             </div>
           )}
+          </section>
+
+          {/* Service Acts — the whitepaper's fourth task category. The
+              'service' category existed in the schema and fed the Community
+              Hero badge, but nothing could create one. */}
+          <section>
+            <h2 className="font-semibold text-[var(--color-text)] mb-1">
+              Did something kind?
+            </h2>
+            <p className="text-sm opacity-55 text-[var(--color-text)] mb-4">
+              Tell us about it. A grown-up will take a look, and it counts
+              towards your Community Hero badge.
+            </p>
+            <ServiceActForm
+              profileId={activeProfileId}
+              smallName={family?.small_coin_name ?? 'Ginsey'}
+              recent={serviceActs}
+            />
+          </section>
         </div>
       </main>
       <BottomNav />

@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
 import { toCashValue, type FamilyRates } from '@/lib/economy';
-import { awardCashoutBadge } from '@/app/actions/virtue';
+import { awardCashoutBadge, awardGiftGiverBadge } from '@/app/actions/virtue';
 
 type SupabaseClient = Awaited<ReturnType<typeof createServerSupabaseClient>>;
 
@@ -131,6 +131,114 @@ export async function requestCashout(
   revalidatePath('/cashout');
   revalidatePath('/dashboard');
   return { success: true, cashValue: requestedCash, request };
+}
+
+/**
+ * Gift Window cash-out.
+ *
+ * A gift window is opened by a parent around a birthday or Christmas. Inside
+ * it a child may cash out a capped slice of their balance specifically to buy
+ * a present for someone else. `is_gift_window` and `gift_max_percent` were in
+ * the schema and settable from the parent form, but no code ever read them —
+ * the mechanic did not exist.
+ *
+ * Using it is what earns the Gift Giver badge.
+ */
+export async function requestGiftCashout(
+  profileId:    string,
+  largeAmount:  number,
+  goldenAmount: number,
+  recipient:    string,
+) {
+  const supabase = await createServerSupabaseClient();
+  const me = await caller(supabase);
+  if (!me) return { error: 'Unauthorized' };
+
+  const large  = Math.floor(largeAmount);
+  const golden = Math.floor(goldenAmount);
+  const forWhom = recipient.trim();
+
+  if (!Number.isFinite(large) || !Number.isFinite(golden)) return { error: 'Invalid amount.' };
+  if (large < 0 || golden < 0)     return { error: 'Amounts cannot be negative.' };
+  if (large === 0 && golden === 0) return { error: 'Choose at least one coin.' };
+  if (!forWhom)                    return { error: 'Who is the gift for?' };
+  if (forWhom.length > 60)         return { error: 'That name is too long.' };
+
+  const { data: profile } = await supabase
+    .from('profiles').select('family_id, display_name').eq('id', profileId).single();
+  if (!profile)                           return { error: 'Profile not found' };
+  if (profile.family_id !== me.family_id) return { error: 'Profile not in your family.' };
+
+  const { data: family } = await supabase
+    .from('families').select('*').eq('id', profile.family_id).single();
+  if (!family) return { error: 'Family not found' };
+
+  const window = await getActiveCashoutWindow(family.id);
+  if (!window)                 return { error: 'No window is open right now.' };
+  if (!window.is_gift_window)  return { error: 'This window is not a gift window.' };
+
+  const { data: balance } = await supabase
+    .from('balance_accounts').select('*').eq('profile_id', profileId).maybeSingle();
+  if (!balance) return { error: 'Balance not found' };
+
+  if (balance.large_balance < large || balance.golden_balance < golden) {
+    return { error: 'Not enough coins.' };
+  }
+
+  const rates: FamilyRates = {
+    smallPerLarge:   family.small_per_large,
+    largeCashValue:  family.large_cash_value,
+    goldenCashValue: family.golden_cash_value,
+    largeMinutes:    family.large_minutes,
+    smallMinutes:    family.small_minutes,
+    goldenMinutes:   family.golden_minutes,
+  };
+
+  const totalCashable = toCashValue(
+    { large: balance.large_balance, small: 0, golden: balance.golden_balance }, rates,
+  );
+  // Gift windows use their own, usually smaller, percentage cap.
+  const maxCash       = totalCashable * ((window.gift_max_percent ?? 10) / 100);
+  const requestedCash = toCashValue({ large, small: 0, golden }, rates);
+
+  if (requestedCash > maxCash) {
+    return {
+      error: `For gifts you can use up to $${maxCash.toFixed(2)} right now (${window.gift_max_percent}% of your balance).`,
+    };
+  }
+
+  const { data: deducted } = await supabase.rpc('adjust_balance', {
+    p_profile_id:   profileId,
+    p_large_delta:  -large,
+    p_golden_delta: -golden,
+  });
+  if (!deducted) return { error: 'Insufficient balance.' };
+
+  await supabase.from('transactions').insert({
+    profile_id:   profileId,
+    type:         'cashout',
+    large_delta:  -large,
+    golden_delta: -golden,
+    description:  `Gift for ${forWhom}: $${requestedCash.toFixed(2)}`,
+  });
+
+  const { data: request } = await supabase.from('cashout_requests').insert({
+    profile_id:    profileId,
+    large_amount:  large,
+    golden_amount: golden,
+    cash_value:    requestedCash,
+    window_id:     window.id,
+    status:        'approved',
+    approved_at:   new Date().toISOString(),
+  }).select().single();
+
+  // This — not gifting a Golden Higg — is what the whitepaper ties the
+  // Gift Giver badge to.
+  const badgeAwarded = await awardGiftGiverBadge(profileId);
+
+  revalidatePath('/cashout');
+  revalidatePath('/dashboard');
+  return { success: true, cashValue: requestedCash, recipient: forWhom, request, badgeAwarded };
 }
 
 export async function createCashoutWindow(formData: FormData, familyId: string) {

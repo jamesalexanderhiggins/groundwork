@@ -10,6 +10,7 @@ import { DraftEngine } from '@/components/kempt/DraftEngine';
 import { NudgeCard } from '@/components/kempt/NudgeCard';
 import { SeedTemplatesButton } from '@/components/kempt/SeedTemplatesButton';
 import type { UserContext } from '@/lib/ai';
+import { PreferenceProvider } from '@/components/shared/PreferenceProvider';
 
 export const metadata = { title: 'Life admin' };
 
@@ -63,6 +64,7 @@ export default async function KemptLifePage() {
 
   return (
     <main className="min-h-screen bg-[var(--color-bg)] pb-16">
+      <PreferenceProvider cognitiveMode={profile.cognitive_mode} />
       <a href="#main" className="skip-link">Skip to content</a>
 
       <header className="bg-[var(--color-bg-card)] shadow-[var(--shadow-sm)] px-6 py-5 sticky top-0 z-10">

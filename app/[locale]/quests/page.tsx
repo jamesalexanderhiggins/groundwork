@@ -4,6 +4,7 @@ import { createServerSupabaseClient } from '@/lib/supabase-server';
 import { getCurrentProfile } from '@/lib/current-profile';
 import { QuestBoard }        from '@/components/higgy/QuestBoard';
 import { BottomNav }         from '@/components/higgy/BottomNav';
+import { PreferenceProvider } from '@/components/shared/PreferenceProvider';
 
 export default async function QuestsPage() {
   const supabase = await createServerSupabaseClient();
@@ -32,6 +33,7 @@ export default async function QuestsPage() {
 
   return (
     <div className={skinClass}>
+      <PreferenceProvider cognitiveMode={profile.cognitive_mode} />
       <main className="min-h-screen bg-[var(--color-bg)] pb-24">
         <header className="bg-[var(--color-bg-card)] shadow-sm px-6 py-4 sticky top-0 z-10">
           <div className="max-w-lg mx-auto">

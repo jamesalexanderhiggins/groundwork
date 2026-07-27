@@ -249,6 +249,84 @@ if (childId && teen?.id) {
   console.log('  SKIP  (needs two child profiles)');
 }
 
+
+// ── 8c. WHITEPAPER FEATURES ──────────────────────────────────────
+console.log('\n8c. WHITEPAPER FEATURES');
+if (childId && familyId) {
+  // Service Acts — the 'service' task category was previously unreachable
+  const { data: svcTask, error: svcErr } = await anon.from('tasks').insert({
+    family_id: familyId, created_by: profileId, assigned_to: childId,
+    title: 'Helped a neighbour', description: 'Act of service',
+    category: 'service', time_block: 'any', reward_type: 'small',
+    reward_small: 1, requires_approval: true, is_recurring: false, active: true,
+  }).select('id').single();
+  svcErr ? bad('create service act task', svcErr.message) : ok('create service act task');
+
+  if (svcTask) {
+    const { error: scErr } = await anon.from('task_completions').insert({
+      task_id: svcTask.id, profile_id: childId,
+      reward_small: 1, reward_large: 0, reward_golden: 0,
+      notes: 'Pending parent approval',
+    });
+    scErr ? bad('submit service act', scErr.message) : ok('submit service act');
+
+    // The join used by the Community Hero badge count
+    const { error: chErr } = await anon.from('task_completions')
+      .select('id, tasks!inner(category)', { count: 'exact', head: true })
+      .eq('profile_id', childId).eq('tasks.category', 'service');
+    chErr ? bad('service act badge join', chErr.message) : ok('service act badge join');
+  }
+
+  // Peaceful Player join (title ilike %chess%)
+  const { error: peaceErr } = await anon.from('task_completions')
+    .select('id, tasks!inner(title)', { count: 'exact', head: true })
+    .eq('profile_id', childId).ilike('tasks.title', '%chess%');
+  peaceErr ? bad('peaceful player badge join', peaceErr.message)
+    : ok('peaceful player badge join');
+
+  // Gift window round trip
+  const now = new Date();
+  const { data: win, error: winErr } = await anon.from('cashout_windows').insert({
+    family_id: familyId, label: 'Test gift window',
+    opens_at:  new Date(now.getTime() - 3600e3).toISOString(),
+    closes_at: new Date(now.getTime() + 3600e3).toISOString(),
+    max_percent: 100, is_gift_window: true, gift_max_percent: 10,
+  }).select().single();
+  winErr ? bad('create gift window', winErr.message) : ok('create gift window');
+
+  if (win) {
+    const { data: readWin } = await anon.from('cashout_windows')
+      .select('is_gift_window, gift_max_percent').eq('id', win.id).maybeSingle();
+    readWin?.is_gift_window === true
+      ? ok('gift window flags readable', `cap ${readWin.gift_max_percent}%`)
+      : bad('gift window flags readable', 'is_gift_window not set');
+
+    const { error: crErr } = await anon.from('cashout_requests').insert({
+      profile_id: childId, large_amount: 0, golden_amount: 0,
+      cash_value: 0, window_id: win.id, status: 'approved',
+    });
+    crErr ? bad('gift cashout request', crErr.message) : ok('gift cashout request');
+  }
+
+  // Family Commitment Mode
+  const { error: cmErr } = await anon.from('families')
+    .update({ quit_penalty: true }).eq('id', familyId);
+  if (cmErr) bad('commitment mode persists', cmErr.message);
+  else {
+    const { data: f } = await anon.from('families')
+      .select('quit_penalty').eq('id', familyId).maybeSingle();
+    f?.quit_penalty === true ? ok('commitment mode persists')
+      : bad('commitment mode persists', 'update matched 0 rows');
+  }
+
+  // recurrence_days round trip
+  const { data: recTask } = await anon.from('tasks')
+    .select('id, recurrence_days').eq('family_id', familyId).limit(1).maybeSingle();
+  Array.isArray(recTask?.recurrence_days)
+    ? ok('recurrence_days readable', `[${recTask.recurrence_days}]`)
+    : bad('recurrence_days readable', 'not an array');
+}
+
 // ── 9. ISOLATION: another family must be invisible ────────────────
 console.log('\n9. CROSS-FAMILY ISOLATION');
 {
@@ -292,7 +370,11 @@ console.log('\n9. CROSS-FAMILY ISOLATION');
 if (svc && familyId) {
   const ids = [childId, profileId, teen?.id].filter(Boolean);
   await svc.from('sibling_trades').delete().in('from_profile', ids);
+  await svc.from('cashout_requests').delete().in('profile_id', ids);
+  await svc.from('cashout_windows').delete().eq('family_id', familyId);
   await svc.from('sibling_trades').delete().in('from_profile', ids);
+  await svc.from('cashout_requests').delete().in('profile_id', ids);
+  await svc.from('cashout_windows').delete().eq('family_id', familyId);
   await svc.from('profile_badges').delete().in('profile_id', ids);
   await svc.from('transactions').delete().in('profile_id', ids);
   await svc.from('task_completions').delete().in('profile_id', ids);

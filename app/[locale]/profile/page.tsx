@@ -6,6 +6,7 @@ import { VirtueBar }                  from '@/components/higgy/VirtueBar';
 import { SkinPicker }                 from '@/components/higgy/SkinPicker';
 import { BadgeShelf }                 from '@/components/higgy/BadgeShelf';
 import type { SkinKey }               from '@/lib/skins';
+import { PreferenceProvider } from '@/components/shared/PreferenceProvider';
 
 export default async function ProfilePage() {
   const supabase = await createServerSupabaseClient();
@@ -80,6 +81,7 @@ export default async function ProfilePage() {
 
   return (
     <div className={skinClass}>
+      <PreferenceProvider cognitiveMode={profile.cognitive_mode} />
       <main className="min-h-screen bg-[var(--color-bg)] pb-24">
         <header className="bg-[var(--color-bg-card)] shadow-sm px-6 py-4 sticky top-0 z-10">
           <div className="max-w-lg mx-auto">

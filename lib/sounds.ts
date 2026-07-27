@@ -18,10 +18,23 @@ const SKIN_SOUND_PROFILE: Record<SkinKey, { freq: number; wave: OscillatorType; 
 
 type SoundEvent = 'complete' | 'bonus' | 'gate' | 'badge' | 'level_up';
 
+// One shared context for the page. Creating a new AudioContext per sound
+// exhausts the browser limit (~6 in Chrome) after a handful of rapid taps,
+// after which audio silently stops working for the rest of the session.
+let sharedCtx: AudioContext | null = null;
+
 function getCtx(): AudioContext | null {
   if (typeof window === 'undefined') return null;
+  if (sharedCtx && sharedCtx.state !== 'closed') {
+    // Autoplay policy suspends the context until a user gesture.
+    if (sharedCtx.state === 'suspended') void sharedCtx.resume();
+    return sharedCtx;
+  }
   try {
-    return new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    const Ctor = window.AudioContext
+      || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    sharedCtx = new Ctor();
+    return sharedCtx;
   } catch { return null; }
 }
 
@@ -46,7 +59,16 @@ function playTone(
 }
 
 export const SoundManager = {
-  muted: false,
+  /**
+   * Sound is off when the user has turned it off on this device.
+   * Reading localStorage each time keeps this in sync with the settings
+   * toggle without needing a subscription — `muted` used to be an in-memory
+   * flag that reset on every page load, so turning sound off never stuck.
+   */
+  get muted(): boolean {
+    if (typeof window === 'undefined') return true;
+    return window.localStorage.getItem('kempt.sound') === 'off';
+  },
 
   play(event: SoundEvent, skin: SkinKey = 'cloud_kingdom') {
     if (this.muted) return;
@@ -82,9 +104,14 @@ export const SoundManager = {
         break;
     }
 
-    // Close context after sounds finish to free resources
-    setTimeout(() => ctx.close(), 2000);
+    // The context is shared and deliberately left open — closing it here
+    // would break every subsequent sound.
   },
 
-  toggle() { this.muted = !this.muted; },
+  setMuted(muted: boolean) {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem('kempt.sound', muted ? 'off' : 'on');
+  },
+
+  toggle() { this.setMuted(!this.muted); },
 };

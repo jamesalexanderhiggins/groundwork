@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
 import { awardVirtuePoints } from '@/app/actions/virtue';
+import { startOfWeek } from '@/lib/schedule';
 
 type SupabaseClient = Awaited<ReturnType<typeof createServerSupabaseClient>>;
 
@@ -38,7 +39,7 @@ export async function completeTask(taskId: string, profileId: string) {
 
   const { data: task } = await supabase
     .from('tasks')
-    .select('reward_small, reward_large, reward_golden, is_gateway, time_block, family_id, active, requires_approval')
+    .select('reward_small, reward_large, reward_golden, is_gateway, time_block, family_id, active, requires_approval, category')
     .eq('id', taskId)
     .single();
 
@@ -62,22 +63,69 @@ export async function completeTask(taskId: string, profileId: string) {
     return { error: 'Already completed today.', alreadyCompleted: true };
   }
 
-  // 10% chance of a bonus Ginsey drop
-  const bonusApplied = Math.random() < 0.1;
+  // Weekly routine cap. The whitepaper caps routine earnings at 6 Higgs a
+  // week; bonus tasks and quests are explicitly uncapped. The column existed
+  // from the start but nothing ever read it.
+  //
+  // Hitting the cap must not block completion — "no shame mechanics, no
+  // visible failure state". The task still completes and still counts toward
+  // the streak; only the coins stop.
+  let cappedOut = false;
+
+  if (task.category === 'routine') {
+    const { data: family } = await supabase
+      .from('families')
+      .select('weekly_routine_cap, small_per_large')
+      .eq('id', auth.familyId)
+      .single();
+
+    const capHiggs     = family?.weekly_routine_cap ?? 0;
+    const smallPerLarge = family?.small_per_large || 6;
+
+    if (capHiggs > 0) {
+      const weekStart = startOfWeek();
+
+      const { data: weekRoutine } = await supabase
+        .from('task_completions')
+        .select('reward_small, reward_large, bonus_small, tasks!inner(category)')
+        .eq('profile_id', profileId)
+        .eq('tasks.category', 'routine')
+        .gte('completed_at', weekStart.toISOString());
+
+      // Express everything in small units for one clean comparison
+      const earnedSmall = (weekRoutine ?? []).reduce(
+        (sum, c) => sum + c.reward_small + (c.bonus_small ?? 0)
+                       + c.reward_large * smallPerLarge,
+        0,
+      );
+      const capSmall = capHiggs * smallPerLarge;
+
+      if (earnedSmall >= capSmall) cappedOut = true;
+    }
+  }
+
+  // 10% chance of a bonus Ginsey drop — not while capped out
+  const bonusApplied = !cappedOut && Math.random() < 0.1;
   const bonusSmall   = bonusApplied ? 1 : 0;
+
+  // Coins earned on this completion. Zero once the weekly cap is reached,
+  // but the completion is still recorded.
+  const earn = cappedOut
+    ? { small: 0, large: 0, golden: 0 }
+    : { small: task.reward_small, large: task.reward_large, golden: task.reward_golden };
 
   const { data: completion, error: completionError } = await supabase
     .from('task_completions')
     .insert({
       task_id:       taskId,
       profile_id:    profileId,
-      reward_small:  task.reward_small,
-      reward_large:  task.reward_large,
-      reward_golden: task.reward_golden,
+      reward_small:  earn.small,
+      reward_large:  earn.large,
+      reward_golden: earn.golden,
       bonus_applied: bonusApplied,
       bonus_small:   bonusSmall,
-      // Tasks needing approval are credited later by the parent
       ...(task.requires_approval ? { notes: 'Pending parent approval' } : {}),
+      ...(cappedOut ? { notes: 'Weekly routine cap reached' } : {}),
     })
     .select('id')
     .single();
@@ -97,39 +145,45 @@ export async function completeTask(taskId: string, profileId: string) {
     };
   }
 
-  // Atomically credit earnings — no read-then-write race
-  const { data: credited } = await supabase.rpc('adjust_balance', {
-    p_profile_id:            profileId,
-    p_small_delta:           task.reward_small + bonusSmall,
-    p_large_delta:           task.reward_large,
-    p_golden_delta:          task.reward_golden,
-    p_lifetime_large_delta:  task.reward_large,
-    p_lifetime_golden_delta: task.reward_golden,
-  });
+  const totalSmall = earn.small + bonusSmall;
 
-  if (!credited) {
-    // Roll back the completion so the task can be retried
-    await supabase.from('task_completions').delete().eq('id', completion.id);
-    return { error: 'Could not credit your coins. Please try again.' };
+  if (totalSmall > 0 || earn.large > 0 || earn.golden > 0) {
+    // Atomically credit earnings — no read-then-write race
+    const { data: credited } = await supabase.rpc('adjust_balance', {
+      p_profile_id:            profileId,
+      p_small_delta:           totalSmall,
+      p_large_delta:           earn.large,
+      p_golden_delta:          earn.golden,
+      p_lifetime_large_delta:  earn.large,
+      p_lifetime_golden_delta: earn.golden,
+    });
+
+    if (!credited) {
+      // Roll back the completion so the task can be retried
+      await supabase.from('task_completions').delete().eq('id', completion.id);
+      return { error: 'Could not credit your coins. Please try again.' };
+    }
+
+    await supabase.from('transactions').insert({
+      profile_id:   profileId,
+      type:         earn.golden > 0 ? 'earn_golden'
+                  : earn.large  > 0 ? 'earn_large'
+                  : 'earn_small',
+      small_delta:  totalSmall,
+      large_delta:  earn.large,
+      golden_delta: earn.golden,
+      description:  `Task completed${bonusApplied ? ' + bonus drop!' : ''}`,
+      reference_id: taskId,
+    });
   }
-
-  await supabase.from('transactions').insert({
-    profile_id:   profileId,
-    type:         task.reward_golden > 0 ? 'earn_golden'
-                : task.reward_large  > 0 ? 'earn_large'
-                : 'earn_small',
-    small_delta:  task.reward_small + bonusSmall,
-    large_delta:  task.reward_large,
-    golden_delta: task.reward_golden,
-    description:  `Task completed${bonusApplied ? ' + bonus drop!' : ''}`,
-    reference_id: taskId,
-  });
 
   const gateTriggered = !!task.is_gateway;
   const fullDay       = gateTriggered && task.time_block === 'pm';
 
   if (fullDay) await updateStreak(profileId, supabase);
 
+  // Virtue points still accrue at the cap — the cap limits spendable
+  // currency, not the long-term identity arc.
   const virtue = await awardVirtuePoints(profileId, {
     small:  task.reward_small + bonusSmall,
     large:  task.reward_large,
@@ -143,11 +197,12 @@ export async function completeTask(taskId: string, profileId: string) {
     bonusApplied,
     bonusSmall,
     gateTriggered,
+    cappedOut,
     timeBlock: task.time_block,
     reward: {
-      small:  task.reward_small + bonusSmall,
-      large:  task.reward_large,
-      golden: task.reward_golden,
+      small:  totalSmall,
+      large:  earn.large,
+      golden: earn.golden,
     },
     virtue,
   };

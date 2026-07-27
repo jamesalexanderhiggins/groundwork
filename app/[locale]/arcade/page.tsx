@@ -6,6 +6,7 @@ import { BottomNav }           from '@/components/higgy/BottomNav';
 import { CurrencyDisplay }     from '@/components/higgy/CurrencyDisplay';
 import { ArcadeTabs }          from '@/components/higgy/ArcadeTabs';
 import type { FamilyRates }    from '@/lib/economy';
+import { PreferenceProvider } from '@/components/shared/PreferenceProvider';
 
 const DAY_CAP_KEYS = [
   'cap_sunday', 'cap_monday', 'cap_tuesday', 'cap_wednesday',
@@ -65,6 +66,7 @@ export default async function ArcadePage() {
 
   return (
     <div className={skinClass}>
+      <PreferenceProvider cognitiveMode={profile.cognitive_mode} />
       <main className="min-h-screen bg-[var(--color-bg)] pb-24">
         <header className="bg-[var(--color-bg-card)] shadow-sm px-6 py-4 sticky top-0 z-10">
           <div className="max-w-lg mx-auto">

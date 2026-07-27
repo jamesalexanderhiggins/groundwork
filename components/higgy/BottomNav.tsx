@@ -7,6 +7,7 @@ const NAV = [
   { href: '/dashboard', label: 'Home',   icon: '🏠' },
   { href: '/tasks',     label: 'Tasks',  icon: '✅' },
   { href: '/arcade',    label: 'Arcade', icon: '🕹️' },
+  { href: '/bulletin',  label: 'Bonus',  icon: '📌' },
   { href: '/quests',    label: 'Quests', icon: '⚔️' },
   { href: '/profile',   label: 'Me',     icon: '⭐' },
 ] as const;

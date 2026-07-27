@@ -1,25 +1,21 @@
 import { redirect }                    from 'next/navigation';
 import { createServerSupabaseClient }  from '@/lib/supabase-server';
-import { getActiveProfile }            from '@/app/actions/profile';
+import { getCurrentProfile }           from '@/lib/current-profile';
 import { getActiveCashoutWindow }      from '@/app/actions/cashout';
 import { BottomNav }                   from '@/components/higgy/BottomNav';
 import { CurrencyDisplay }             from '@/components/higgy/CurrencyDisplay';
 import { CashoutRequestForm }          from '@/components/higgy/CashoutRequestForm';
+import { GiftWindowForm }              from '@/components/higgy/GiftWindowForm';
+import { PreferenceProvider }          from '@/components/shared/PreferenceProvider';
 
 export default async function CashoutPage() {
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const activeProfileId = await getActiveProfile();
-  if (!activeProfileId) redirect('/dashboard');
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('display_name, family_id, skin')
-    .eq('id', activeProfileId)
-    .single();
-  if (!profile) redirect('/dashboard');
+  const profile = await getCurrentProfile();
+  if (!profile) redirect('/onboarding');
+  const activeProfileId = profile.id;
 
   const { data: family } = await supabase
     .from('families')
@@ -39,6 +35,7 @@ export default async function CashoutPage() {
 
   return (
     <div className={skinClass}>
+      <PreferenceProvider cognitiveMode={profile.cognitive_mode} />
       <main className="min-h-screen bg-[var(--color-bg)] pb-24">
         <header className="bg-[var(--color-bg-card)] shadow-sm px-6 py-4 sticky top-0 z-10">
           <div className="max-w-lg mx-auto">
@@ -68,16 +65,52 @@ export default async function CashoutPage() {
               </p>
             </div>
           ) : (
-            <CashoutRequestForm
-              profileId={activeProfileId}
-              largeBalance={balance?.large_balance ?? 0}
-              goldenBalance={balance?.golden_balance ?? 0}
-              largeName={family?.large_coin_name ?? 'Higg'}
-              goldenName={family?.golden_coin_name ?? 'Golden Higg'}
-              largeCashValue={family?.large_cash_value ?? 2}
-              goldenCashValue={family?.golden_cash_value ?? 5}
-              maxPercent={window.max_percent}
-            />
+            <div className="flex flex-col gap-8">
+              <section>
+                {window.label && (
+                  <p className="text-sm opacity-60 text-[var(--color-text)] mb-3">
+                    {window.label} · closes{' '}
+                    {new Date(window.closes_at).toLocaleDateString(undefined, {
+                      weekday: 'short', day: 'numeric', month: 'short',
+                    })}
+                  </p>
+                )}
+                <CashoutRequestForm
+                  profileId={activeProfileId}
+                  largeBalance={balance?.large_balance ?? 0}
+                  goldenBalance={balance?.golden_balance ?? 0}
+                  largeName={family?.large_coin_name ?? 'Higg'}
+                  goldenName={family?.golden_coin_name ?? 'Golden Higg'}
+                  largeCashValue={family?.large_cash_value ?? 2}
+                  goldenCashValue={family?.golden_cash_value ?? 5}
+                  maxPercent={window.max_percent}
+                />
+              </section>
+
+              {/* Gift Window — only appears when the parent has opened one.
+                  Stored in the schema since day one but never surfaced. */}
+              {window.is_gift_window && (
+                <section className="card p-5 border-2 border-[var(--color-reward)]/40">
+                  <h2 className="font-semibold text-[var(--color-text)] mb-1">
+                    🎁 Gift window is open
+                  </h2>
+                  <p className="text-sm opacity-55 text-[var(--color-text)] mb-4">
+                    Want to buy something for someone else? You can put a bit of
+                    your own money towards it.
+                  </p>
+                  <GiftWindowForm
+                    profileId={activeProfileId}
+                    largeBalance={balance?.large_balance ?? 0}
+                    goldenBalance={balance?.golden_balance ?? 0}
+                    largeName={family?.large_coin_name ?? 'Higg'}
+                    goldenName={family?.golden_coin_name ?? 'Golden Higg'}
+                    largeCashValue={family?.large_cash_value ?? 2}
+                    goldenCashValue={family?.golden_cash_value ?? 5}
+                    giftMaxPercent={window.gift_max_percent ?? 10}
+                  />
+                </section>
+              )}
+            </div>
           )}
         </div>
       </main>

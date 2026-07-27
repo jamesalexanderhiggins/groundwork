@@ -60,6 +60,7 @@ async function checkBadges(
     { data: streak },
     { count: completionCount },
     { count: serviceActCount },
+    { count: peaceCount },
     { data: existingBadges },
     { data: allBadges },
   ] = await Promise.all([
@@ -79,6 +80,12 @@ async function checkBadges(
       .eq('profile_id', profileId)
       .eq('tasks.category', 'service')
       .not('approved_at', 'is', null),
+    // Peaceful Player: the whitepaper awards this for earning the chess
+    // peace bonus five times. It had no trigger at all.
+    supabase.from('task_completions')
+      .select('id, tasks!inner(title)', { count: 'exact', head: true })
+      .eq('profile_id', profileId)
+      .ilike('tasks.title', '%chess%'),
     // profile_badges has a composite PK — select the FK, not a non-existent id
     supabase.from('profile_badges')
       .select('badge_id')
@@ -104,6 +111,7 @@ async function checkBadges(
   maybe('big_saver',       (account?.lifetime_large ?? 0) >= 100);
   maybe('virtue_rising',   virtueLevel >= 5);
   maybe('golden_moment',   (account?.lifetime_golden ?? 0) > 0);
+  maybe('peaceful_player', (peaceCount ?? 0) >= 5);
 
   if (toAward.length > 0) {
     // Ignore duplicates if two completions race

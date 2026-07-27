@@ -21,8 +21,11 @@ export async function createQuest(formData: FormData) {
   const supabase = await createServerSupabaseClient();
   const caller = await callerFamily(supabase);
   if (!caller) return { error: 'Unauthorized' };
-  if (!['parent', 'admin'].includes(caller.role)) {
-    return { error: 'Only parents can create quests.' };
+  // The whitepaper gives Trusted Adults quest-issuing rights alongside
+  // parents: "Issue Quests (with parent notification)". They still cannot
+  // set daily tasks, change rules or touch billing.
+  if (!['parent', 'admin', 'trusted_adult'].includes(caller.role)) {
+    return { error: 'You are not able to create quests.' };
   }
 
   const title = ((formData.get('title') as string) ?? '').trim();

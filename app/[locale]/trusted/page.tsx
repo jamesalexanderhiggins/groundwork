@@ -34,10 +34,31 @@ export default async function TrustedPage() {
   // 'teen' is a life_stage, not a role — filtering roles by it matched nothing.
   const { data: children } = await supabase
     .from('profiles')
-    .select('id, display_name')
+    .select('id, display_name, life_stage, virtue_level')
     .eq('family_id', profile.family_id)
     .eq('role', 'child')
     .order('display_name');
+
+  // The whitepaper grants Trusted Adults visibility of balances and recent
+  // activity. The page previously showed neither.
+  const childIds = (children ?? []).map(c => c.id);
+
+  const { data: balances } = childIds.length
+    ? await supabase
+        .from('balance_accounts')
+        .select('profile_id, large_balance, small_balance, golden_balance')
+        .in('profile_id', childIds)
+    : { data: [] };
+
+  const { data: streaks } = childIds.length
+    ? await supabase
+        .from('streaks')
+        .select('profile_id, current_streak')
+        .in('profile_id', childIds)
+    : { data: [] };
+
+  const balanceBy = Object.fromEntries((balances ?? []).map(b => [b.profile_id, b]));
+  const streakBy  = Object.fromEntries((streaks  ?? []).map(s => [s.profile_id, s.current_streak]));
 
   const { data: recentGifts } = await supabase
     .from('transactions')
@@ -64,6 +85,38 @@ export default async function TrustedPage() {
       </header>
 
       <div className="px-6 pt-6 max-w-lg mx-auto flex flex-col gap-6">
+
+        {children && children.length > 0 && (
+          <section className="card p-5">
+            <h2 className="font-semibold text-[var(--color-text)] mb-3">How they&apos;re doing</h2>
+            <ul className="flex flex-col gap-3">
+              {children.map(c => {
+                const bal = balanceBy[c.id];
+                const streak = streakBy[c.id] ?? 0;
+                return (
+                  <li key={c.id} className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-medium text-[var(--color-text)] truncate">
+                        {c.display_name}
+                      </p>
+                      <p className="text-xs opacity-55 text-[var(--color-text)]">
+                        Level {c.virtue_level ?? 1}
+                        {streak > 0 && ` · 🔥 ${streak} day streak`}
+                      </p>
+                    </div>
+                    {bal && (
+                      <p className="text-xs text-right shrink-0 text-[var(--color-text)] opacity-70">
+                        {bal.large_balance} {family?.large_coin_name ?? 'Higg'}
+                        <br />
+                        {bal.golden_balance} {goldenName}
+                      </p>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
 
         <section className="card p-5">
           <h2 className="font-semibold text-[var(--color-text)] mb-1">Send a golden gift</h2>

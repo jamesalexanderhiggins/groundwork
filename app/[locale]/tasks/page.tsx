@@ -7,6 +7,8 @@ import { TaskList } from '@/components/higgy/TaskList';
 import { CurrencyDisplay } from '@/components/higgy/CurrencyDisplay';
 import { SiblingTrade } from '@/components/higgy/SiblingTrade';
 import { BottomNav } from '@/components/higgy/BottomNav';
+import { runsToday } from '@/lib/schedule';
+import { PreferenceProvider } from '@/components/shared/PreferenceProvider';
 
 export const metadata = { title: 'Tasks' };
 
@@ -43,10 +45,10 @@ export default async function TasksPage() {
         .select('current_streak')
         .eq('profile_id', activeProfileId).maybeSingle(),
       supabase.from('tasks')
-        .select('id, title, reward_small, reward_large, is_gateway, time_block, category, sort_order, assigned_to')
+        .select('id, title, reward_small, reward_large, is_gateway, time_block, category, sort_order, assigned_to, recurrence_days')
         .eq('family_id', profile.family_id)
         .eq('active', true)
-        .in('category', ['routine', 'bonus'])
+        .eq('category', 'routine')
         .order('sort_order', { ascending: true }),
     ]);
 
@@ -81,23 +83,24 @@ export default async function TasksPage() {
 
   const completedIds = await getTodayCompletions(activeProfileId);
 
-  // Only show tasks assigned to this profile, or to nobody in particular.
-  const mine = (tasks ?? []).filter(
-    t => !t.assigned_to || t.assigned_to === activeProfileId,
+  // Only show tasks assigned to this profile, or to nobody in particular,
+  // and only those scheduled to run today. recurrence_days was stored on
+  // every task from the start but never read, so a weekday-only chore
+  // appeared on Sundays.
+  const mine = (tasks ?? []).filter(t =>
+    (!t.assigned_to || t.assigned_to === activeProfileId) &&
+    runsToday(t.recurrence_days),
   );
 
-  const routine  = mine.filter(t => t.category === 'routine');
-  const amTasks  = routine.filter(t => t.time_block === 'am');
-  const pmTasks  = routine.filter(t => t.time_block === 'pm');
-  const anyTasks = [
-    ...routine.filter(t => t.time_block === 'any'),
-    ...mine.filter(t => t.category === 'bonus'),
-  ];
+  const amTasks  = mine.filter(t => t.time_block === 'am');
+  const pmTasks  = mine.filter(t => t.time_block === 'pm');
+  const anyTasks = mine.filter(t => t.time_block === 'any');
 
   const skinClass = `skin-${profile.skin ?? 'cloud_kingdom'}`;
 
   return (
     <div className={skinClass}>
+      <PreferenceProvider cognitiveMode={profile.cognitive_mode} />
       <main className="min-h-screen bg-[var(--color-bg)] pb-nav">
         <a href="#tasks" className="skip-link">Skip to tasks</a>
 

@@ -61,6 +61,37 @@ export async function updateLocale(profileId: string, locale: string) {
   return { success: true };
 }
 
+/**
+ * Family Commitment Mode — families.quit_penalty.
+ *
+ * The whitepaper requires this to be off by default and switched on only
+ * after an explicit acknowledgement, which the UI handles.
+ */
+export async function setCommitmentMode(familyId: string, enabled: boolean) {
+  const supabase = await createServerSupabaseClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Unauthorized' };
+
+  const { data: caller } = await supabase
+    .from('profiles').select('family_id, role').eq('user_id', user.id).single();
+
+  if (!caller)                                    return { error: 'No profile found' };
+  if (caller.family_id !== familyId)              return { error: 'Not your family.' };
+  if (!['parent', 'admin'].includes(caller.role)) {
+    return { error: 'Only parents can change this.' };
+  }
+
+  const { error } = await supabase
+    .from('families')
+    .update({ quit_penalty: enabled })
+    .eq('id', familyId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath('/settings');
+  return { success: true };
+}
+
 /** Update the family's economy settings. Parents only. */
 export async function updateFamilySettings(formData: FormData) {
   const supabase = await createServerSupabaseClient();

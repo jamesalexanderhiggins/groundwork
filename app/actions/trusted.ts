@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
-import { awardGoldenBadge, awardGiftGiverBadge } from '@/app/actions/virtue';
+import { awardGoldenBadge } from '@/app/actions/virtue';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -180,10 +180,10 @@ export async function giftGoldenHigg(
     reference_id: fromProfileId,
   });
 
-  await Promise.all([
-    awardGoldenBadge(toProfileId),
-    awardGiftGiverBadge(fromProfileId),
-  ]);
+  // Only the recipient earns a badge here. Gift Giver belongs to a child
+  // spending their own coins through the Gift Window, not to an adult
+  // gifting from their own pocket.
+  await awardGoldenBadge(toProfileId);
 
   revalidatePath('/trusted');
   revalidatePath('/dashboard');

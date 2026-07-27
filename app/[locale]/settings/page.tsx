@@ -3,6 +3,9 @@ import Link from 'next/link';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
 import { CognitiveModeSelector } from '@/components/settings/CognitiveModeSelector';
 import { LocalePicker } from '@/components/settings/LocalePicker';
+import { SensoryControls } from '@/components/settings/SensoryControls';
+import { CommitmentModeToggle } from '@/components/parent/CommitmentModeToggle';
+import { PreferenceProvider } from '@/components/shared/PreferenceProvider';
 import type { CognitiveMode } from '@/app/actions/settings';
 
 export const metadata = { title: 'Settings' };
@@ -29,7 +32,7 @@ export default async function SettingsPage({ params }: Props) {
   // and left the header blank.
   const { data: family } = await supabase
     .from('families')
-    .select('name')
+    .select('name, quit_penalty')
     .eq('id', profile.family_id)
     .single();
 
@@ -37,6 +40,7 @@ export default async function SettingsPage({ params }: Props) {
 
   return (
     <main className="min-h-screen bg-[var(--color-bg)] pb-16">
+      <PreferenceProvider cognitiveMode={profile.cognitive_mode} />
       <header className="bg-[var(--color-bg-card)] shadow-[var(--shadow-sm)] px-6 py-5 sticky top-0 z-10">
         <div className="max-w-lg mx-auto">
           <Link
@@ -67,12 +71,34 @@ export default async function SettingsPage({ params }: Props) {
         </section>
 
         <section className="card p-5">
+          <h2 className="font-semibold text-[var(--color-text)] mb-1">Sound &amp; motion</h2>
+          <p className="text-sm opacity-55 text-[var(--color-text)] mb-4">
+            Turn either off if they get in the way. Nothing is lost — the
+            app works exactly the same either way.
+          </p>
+          <SensoryControls />
+        </section>
+
+        <section className="card p-5">
           <h2 className="font-semibold text-[var(--color-text)] mb-1">Language</h2>
           <p className="text-sm opacity-55 text-[var(--color-text)] mb-4">
             Switching here also saves your choice for AI replies and emails.
           </p>
           <LocalePicker profileId={profile.id} current={locale} />
         </section>
+
+        {isParent && (
+          <section className="card p-5">
+            <h2 className="font-semibold text-[var(--color-text)] mb-1">House rules</h2>
+            <p className="text-sm opacity-55 text-[var(--color-text)] mb-4">
+              One strong optional rule from the original family system.
+            </p>
+            <CommitmentModeToggle
+              familyId={profile.family_id}
+              enabled={!!family?.quit_penalty}
+            />
+          </section>
+        )}
 
         {isParent && (
           <section className="card p-5">

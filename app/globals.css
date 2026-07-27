@@ -80,7 +80,9 @@ h1, h2, h3, h4 {
 }
 :focus:not(:focus-visible) { outline: none; }
 
-/* Respect the OS reduced-motion setting */
+/* Respect the OS reduced-motion setting, and the in-app Animations toggle.
+   The whitepaper treats motion control as a first-class sensory control,
+   not just an OS passthrough. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -88,6 +90,65 @@ h1, h2, h3, h4 {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+html.motion-off *,
+html.motion-off *::before,
+html.motion-off *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* ── Cognitive modes ───────────────────────────────────────────────
+   These change the interface, not only the AI's tone of voice. The
+   whitepaper calls them "first-class design modes developed from current
+   UX research — not accessibility toggles". */
+
+/* Dyslexia: wider spacing, heavier weight, no justified text.
+   OpenDyslexic is used when the reader has it installed; the stack falls
+   back to system faces rather than shipping a large webfont. */
+html.cog-dyslexia body {
+  font-family: 'OpenDyslexic', 'Comic Sans MS', 'Trebuchet MS', var(--font-body);
+  letter-spacing: 0.04em;
+  word-spacing: 0.14em;
+  line-height: 1.85;
+}
+html.cog-dyslexia p,
+html.cog-dyslexia li,
+html.cog-dyslexia label {
+  max-width: 62ch;       /* short lines are easier to track */
+  text-align: left;
+  hyphens: none;
+}
+
+/* Autism: predictable and still. Nothing moves unless the user moved it. */
+html.cog-autism *,
+html.cog-autism *::before,
+html.cog-autism *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+html.cog-autism .animate-fade-up,
+html.cog-autism .animate-pop {
+  animation: none !important;
+}
+
+/* Calm: softer contrast, more air, nothing shouting. */
+html.cog-calm body {
+  line-height: 1.75;
+}
+html.cog-calm .card {
+  box-shadow: var(--shadow-sm);
+}
+
+/* ADHD: stronger focus ring and larger targets — the one visible task
+   should be unmistakable. */
+html.cog-adhd :focus-visible {
+  outline-width: 3px;
+  outline-offset: 3px;
 }
 
 /* Screen-reader-only text that becomes visible on focus */
