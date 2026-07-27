@@ -16,10 +16,14 @@ interface ScreenTimeTimerProps {
 }
 
 export function ScreenTimeTimer({ sessionId, endsAt, device, familyRates, smallName, onDone }: ScreenTimeTimerProps) {
-  const [remaining, setRemaining]   = useState(Math.max(0, Math.ceil((endsAt - Date.now()) / 1000)));
-  const [overtime,  setOvertime]    = useState(0);
-  const [ending,    setEnding]      = useState(false);
-  const [startedAt] = useState(Date.now());
+  // Lazy initialisers — reading the clock during render is impure and can
+  // produce a different value on each re-render under concurrent rendering.
+  const [remaining, setRemaining] = useState(
+    () => Math.max(0, Math.ceil((endsAt - Date.now()) / 1000)),
+  );
+  const [overtime, setOvertime] = useState(0);
+  const [ending,   setEnding]   = useState(false);
+  const [startedAt] = useState(() => Date.now());
 
   useEffect(() => {
     const tick = setInterval(() => {

@@ -15,19 +15,39 @@ interface SkinPickerProps {
 export function SkinPicker({ profileId, currentSkin, virtueLevel }: SkinPickerProps) {
   const [active, setActive] = useState<SkinKey>(currentSkin);
   const [saving, setSaving] = useState(false);
+  const [error,  setError]  = useState('');
 
   async function handlePick(key: SkinKey) {
-    if (!isSkinUnlocked(key, virtueLevel) || key === active) return;
+    if (!isSkinUnlocked(key, virtueLevel) || key === active || saving) return;
     setSaving(true);
-    await setSkin(profileId, key);
-    setActive(key);
+    setError('');
+
+    // The result was previously discarded, so a rejected change still
+    // repainted the UI and then silently reverted on the next load.
+    const result = await setSkin(profileId, key);
     setSaving(false);
-    // Apply immediately on client
-    document.documentElement.className = document.documentElement.className
-      .replace(/skin-\S+/g, '').trim() + ` skin-${key}`;
+
+    if (result && 'error' in result && result.error) {
+      setError(result.error);
+      return;
+    }
+
+    setActive(key);
+
+    // Repaint immediately. classList avoids clobbering any other classes
+    // that happen to be on <html>.
+    const html = document.documentElement;
+    SKINS.forEach(s => html.classList.remove(`skin-${s.key}`));
+    html.classList.add(`skin-${key}`);
   }
 
   return (
+    <>
+    {error && (
+      <p role="alert" className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
+        {error}
+      </p>
+    )}
     <div className="grid grid-cols-2 gap-3">
       {SKINS.map(skin => {
         const unlocked = isSkinUnlocked(skin.key, virtueLevel);
@@ -73,5 +93,6 @@ export function SkinPicker({ profileId, currentSkin, virtueLevel }: SkinPickerPr
         );
       })}
     </div>
+    </>
   );
 }

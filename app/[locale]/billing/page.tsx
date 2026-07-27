@@ -1,4 +1,5 @@
 import { redirect }                   from 'next/navigation';
+import Link                            from 'next/link';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
 import { getSubscriptionStatus, isSubscribed } from '@/lib/subscription';
 import { PLAN_DISPLAY, type PlanKey } from '@/lib/stripe';
@@ -51,7 +52,7 @@ export default async function BillingPage() {
     <main className="min-h-screen bg-gray-50 pb-16">
       <header className="bg-white shadow-sm px-6 py-5">
         <div className="max-w-2xl mx-auto">
-          <a href="/dashboard" className="text-indigo-600 text-sm mb-2 inline-block">← Dashboard</a>
+          <Link href="/dashboard" className="text-indigo-600 text-sm mb-2 inline-block">← Dashboard</Link>
           <h1 className="font-bold text-xl text-gray-900">Billing</h1>
           <p className="text-sm text-gray-400">{family?.family_name}</p>
         </div>

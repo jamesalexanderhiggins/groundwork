@@ -12,13 +12,13 @@ interface Child {
 
 interface GiftFormProps {
   fromProfileId: string;
-  children:      Child[];
+  recipients:    Child[];
   goldenName:    string;
   onGifted?:     (toProfileId: string, amount: number) => void;
 }
 
-export function GiftForm({ fromProfileId, children, goldenName, onGifted }: GiftFormProps) {
-  const [toId,   setToId]   = useState(children[0]?.id ?? '');
+export function GiftForm({ fromProfileId, recipients, goldenName, onGifted }: GiftFormProps) {
+  const [toId,   setToId]   = useState(recipients[0]?.id ?? '');
   const [amount, setAmount] = useState('1');
   const [note,   setNote]   = useState('');
   const [status, setStatus] = useState<string | null>(null);
@@ -52,7 +52,7 @@ export function GiftForm({ fromProfileId, children, goldenName, onGifted }: Gift
           onChange={e => setToId(e.target.value)}
           className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-card)] text-[var(--color-text)] p-3"
         >
-          {children.map(c => (
+          {recipients.map(c => (
             <option key={c.id} value={c.id}>{c.display_name}</option>
           ))}
         </select>

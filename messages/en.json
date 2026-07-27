@@ -67,21 +67,58 @@
     "your_balance": "Your balance",
     "no_tasks_today": "No tasks today.",
     "all_done": "All done!",
-    "tap_to_complete": "Tap to complete"
+    "tap_to_complete": "Tap to complete",
+    "anytime_tasks": "Anytime tasks"
   },
   "badges": {
-    "first_steps":     { "title": "First Steps",      "desc": "The journey begins." },
-    "keeper_of_order": { "title": "Keeper of Order",  "desc": "Seven days. Unbroken." },
-    "streak_legend":   { "title": "Streak Legend",    "desc": "Thirty days of excellence." },
-    "quest_champion":  { "title": "Quest Champion",   "desc": "Your first quest completed." },
-    "quest_master":    { "title": "Quest Master",     "desc": "Ten quests conquered." },
-    "gift_giver":      { "title": "Gift Giver",       "desc": "You used the gift window." },
-    "community_hero":  { "title": "Community Hero",   "desc": "Three acts of service." },
-    "first_cashout":   { "title": "First Cashout",    "desc": "Real money, really earned." },
-    "big_saver":       { "title": "Big Saver",        "desc": "One hundred coins saved." },
-    "virtue_rising":   { "title": "Virtue Rising",    "desc": "Virtue Level 5 reached." },
-    "golden_moment":   { "title": "Golden Moment",    "desc": "Your first Golden coin." },
-    "peaceful_player": { "title": "Peaceful Player",  "desc": "Chess peace earned five times." }
+    "first_steps": {
+      "title": "First Steps",
+      "desc": "The journey begins."
+    },
+    "keeper_of_order": {
+      "title": "Keeper of Order",
+      "desc": "Seven days. Unbroken."
+    },
+    "streak_legend": {
+      "title": "Streak Legend",
+      "desc": "Thirty days of excellence."
+    },
+    "quest_champion": {
+      "title": "Quest Champion",
+      "desc": "Your first quest completed."
+    },
+    "quest_master": {
+      "title": "Quest Master",
+      "desc": "Ten quests conquered."
+    },
+    "gift_giver": {
+      "title": "Gift Giver",
+      "desc": "You used the gift window."
+    },
+    "community_hero": {
+      "title": "Community Hero",
+      "desc": "Three acts of service."
+    },
+    "first_cashout": {
+      "title": "First Cashout",
+      "desc": "Real money, really earned."
+    },
+    "big_saver": {
+      "title": "Big Saver",
+      "desc": "One hundred coins saved."
+    },
+    "virtue_rising": {
+      "title": "Virtue Rising",
+      "desc": "Virtue Level 5 reached."
+    },
+    "golden_moment": {
+      "title": "Golden Moment",
+      "desc": "Your first Golden coin."
+    },
+    "peaceful_player": {
+      "title": "Peaceful Player",
+      "desc": "Chess peace earned five times."
+    }
   },
   "nav": {
     "home": "Home",

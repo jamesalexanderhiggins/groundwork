@@ -1,37 +1,44 @@
-import { redirect }                   from 'next/navigation';
+import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
-import { GiftForm }                   from '@/components/trusted/GiftForm';
+import { GiftForm } from '@/components/trusted/GiftForm';
+import { InviteTrustedForm } from '@/components/parent/InviteTrustedForm';
+
+export const metadata = { title: 'Trusted adults' };
 
 export default async function TrustedPage() {
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  // Find trusted_adult profile for this user
   const { data: profile } = await supabase
     .from('profiles')
     .select('id, display_name, family_id, role')
     .eq('user_id', user.id)
     .single();
 
-  if (!profile || profile.role !== 'trusted_adult') {
-    redirect('/dashboard');
-  }
+  if (!profile) redirect('/onboarding');
+
+  // Parents were previously bounced back to the dashboard even though the
+  // dashboard links them here — and giftGoldenHigg already allows them.
+  const canGift   = ['trusted_adult', 'parent', 'admin'].includes(profile.role);
+  const canInvite = ['parent', 'admin'].includes(profile.role);
+  if (!canGift) redirect('/dashboard');
 
   const { data: family } = await supabase
     .from('families')
-    .select('golden_coin_name, large_coin_name')
+    .select('name, golden_coin_name, large_coin_name')
     .eq('id', profile.family_id)
     .single();
 
-  // Fetch children in the family
+  // 'teen' is a life_stage, not a role — filtering roles by it matched nothing.
   const { data: children } = await supabase
     .from('profiles')
     .select('id, display_name')
     .eq('family_id', profile.family_id)
-    .in('role', ['child', 'teen']);
+    .eq('role', 'child')
+    .order('display_name');
 
-  // Recent gifts by this adult
   const { data: recentGifts } = await supabase
     .from('transactions')
     .select('golden_delta, description, created_at')
@@ -40,42 +47,72 @@ export default async function TrustedPage() {
     .order('created_at', { ascending: false })
     .limit(10);
 
+  const goldenName = family?.golden_coin_name ?? 'Golden Higg';
+
   return (
-    <main className="min-h-screen bg-gray-50 pb-12">
-      <header className="bg-white shadow-sm px-6 py-5">
+    <main className="min-h-screen bg-[var(--color-bg)] pb-12">
+      <header className="bg-[var(--color-bg-card)] shadow-[var(--shadow-sm)] px-6 py-5">
         <div className="max-w-lg mx-auto">
-          <p className="text-sm text-gray-500">Trusted Adult Portal</p>
-          <h1 className="font-bold text-xl text-gray-900">{profile.display_name}</h1>
+          <Link href="/dashboard" className="text-[var(--color-primary)] text-sm mb-1 inline-block hover:underline">
+            ← Dashboard
+          </Link>
+          <h1 className="font-bold text-xl text-[var(--color-text)]">Trusted adults</h1>
+          <p className="text-sm opacity-55 text-[var(--color-text)]">
+            {profile.display_name}{family?.name ? ` · ${family.name}` : ''}
+          </p>
         </div>
       </header>
 
-      <div className="px-6 pt-6 max-w-lg mx-auto flex flex-col gap-8">
-        {/* Gift form */}
-        <section className="bg-white rounded-xl border border-gray-200 p-5">
-          <h2 className="font-semibold text-gray-900 mb-1">Send a Golden Gift</h2>
-          <p className="text-sm text-gray-500 mb-4">
-            Gift {family?.golden_coin_name ?? 'Golden Higgs'} to reward hard work or special moments.
+      <div className="px-6 pt-6 max-w-lg mx-auto flex flex-col gap-6">
+
+        <section className="card p-5">
+          <h2 className="font-semibold text-[var(--color-text)] mb-1">Send a golden gift</h2>
+          <p className="text-sm opacity-55 text-[var(--color-text)] mb-4">
+            A {goldenName} is backed by your own money, not the family pot.
+            Use it to mark something that deserves noticing.
           </p>
+
           {children && children.length > 0 ? (
             <GiftForm
               fromProfileId={profile.id}
-              children={children}
-              goldenName={family?.golden_coin_name ?? 'Golden Higg'}
+              recipients={children}
+              goldenName={goldenName}
             />
           ) : (
-            <p className="text-sm text-gray-500">No children in this family yet.</p>
+            <p className="text-sm opacity-55 text-[var(--color-text)]">
+              No children in this family yet.
+            </p>
           )}
         </section>
 
-        {/* Recent gifts */}
+        {canInvite && (
+          <section className="card p-5">
+            <h2 className="font-semibold text-[var(--color-text)] mb-1">Invite a trusted adult</h2>
+            <p className="text-sm opacity-55 text-[var(--color-text)] mb-4">
+              Grandparents, godparents or close friends. They can send gifts
+              but cannot change tasks or settings.
+            </p>
+            <InviteTrustedForm />
+          </section>
+        )}
+
         {recentGifts && recentGifts.length > 0 && (
-          <section className="bg-white rounded-xl border border-gray-200 p-5">
-            <h2 className="font-semibold text-gray-900 mb-3">Recent Gifts</h2>
+          <section className="card p-5">
+            <h2 className="font-semibold text-[var(--color-text)] mb-3">Your recent gifts</h2>
             <ul className="flex flex-col gap-2">
               {recentGifts.map((g, i) => (
-                <li key={i} className="text-sm text-gray-700 flex justify-between">
-                  <span className="opacity-70">{new Date(g.created_at).toLocaleDateString()}</span>
-                  <span className="font-medium">+{g.golden_delta} {family?.golden_coin_name ?? 'Golden Higg'}</span>
+                <li
+                  key={i}
+                  className="text-sm text-[var(--color-text)] flex justify-between gap-3 py-1"
+                >
+                  <span className="opacity-55 shrink-0">
+                    {new Date(g.created_at).toLocaleDateString(undefined, {
+                      day: 'numeric', month: 'short',
+                    })}
+                  </span>
+                  <span className="font-medium text-[var(--color-reward)]">
+                    +{g.golden_delta} {goldenName}
+                  </span>
                 </li>
               ))}
             </ul>

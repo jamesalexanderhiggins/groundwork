@@ -8,7 +8,7 @@ import { Input } from '@/components/shared/Input';
 
 interface Child { id: string; display_name: string; }
 
-export function CreateQuestForm({ children }: { children: Child[] }) {
+export function CreateQuestForm({ assignees }: { assignees: Child[] }) {
   const [error,   setError]   = useState('');
   const [success, setSuccess] = useState(false);
   const [pending, start]      = useTransition();
@@ -51,7 +51,7 @@ export function CreateQuestForm({ children }: { children: Child[] }) {
         <Input label="Golden Higgs"  name="reward_golden" type="number" min={0} defaultValue={0} />
       </div>
 
-      {children.length > 0 && (
+      {assignees.length > 0 && (
         <div>
           <label className="text-sm font-medium text-[var(--color-text)] block mb-1">Assign to (optional)</label>
           <select
@@ -59,7 +59,7 @@ export function CreateQuestForm({ children }: { children: Child[] }) {
             className="w-full px-4 py-3 rounded-[var(--border-radius)] border border-[var(--color-accent)] bg-[var(--color-bg-card)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-sm"
           >
             <option value="">Anyone</option>
-            {children.map(c => <option key={c.id} value={c.id}>{c.display_name}</option>)}
+            {assignees.map(c => <option key={c.id} value={c.id}>{c.display_name}</option>)}
           </select>
         </div>
       )}

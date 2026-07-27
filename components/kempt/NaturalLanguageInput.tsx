@@ -9,19 +9,23 @@ import type { UserContext } from '@/lib/ai';
 interface NaturalLanguageInputProps {
   profileId: string;
   context:   UserContext;
+  /** When false the AI parse step is skipped entirely. */
+  aiEnabled?: boolean;
   onAdded?:  (item: LifeItemInput & { id: string }) => void;
 }
 
-const CATEGORY_COLORS: Record<string, string> = {
-  health:   'bg-green-100 text-green-700',
-  finance:  'bg-yellow-100 text-yellow-700',
-  admin:    'bg-blue-100 text-blue-700',
-  home:     'bg-orange-100 text-orange-700',
-  security: 'bg-red-100 text-red-700',
-  other:    'bg-gray-100 text-gray-600',
+const CATEGORY_STYLES: Record<string, string> = {
+  health:   'bg-emerald-100 text-emerald-800',
+  finance:  'bg-amber-100 text-amber-800',
+  admin:    'bg-sky-100 text-sky-800',
+  home:     'bg-orange-100 text-orange-800',
+  security: 'bg-rose-100 text-rose-800',
+  other:    'bg-slate-100 text-slate-700',
 };
 
-export function NaturalLanguageInput({ profileId, context, onAdded }: NaturalLanguageInputProps) {
+export function NaturalLanguageInput({
+  profileId, context, aiEnabled = true, onAdded,
+}: NaturalLanguageInputProps) {
   const [text,    setText]    = useState('');
   const [parsed,  setParsed]  = useState<LifeItemInput | null>(null);
   const [step,    setStep]    = useState<'input' | 'preview' | 'done'>('input');
@@ -29,24 +33,70 @@ export function NaturalLanguageInput({ profileId, context, onAdded }: NaturalLan
   const [error,   setError]   = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  async function handleParse() {
-    if (!text.trim()) return;
+  /** Save the raw text as a plain item, no AI involved. */
+  async function saveDirect(raw: string) {
+    const res = await createLifeItem(profileId, {
+      title: raw.trim().slice(0, 200),
+      ai_generated: false,
+    });
+    if (res.error) { setError(res.error); return false; }
+    if (res.item) onAdded?.(res.item);
+    return true;
+  }
+
+  async function handleAdd() {
+    const raw = text.trim();
+    if (!raw) return;
+
     setLoading(true);
     setError(null);
+
+    // Without an API key the parse endpoint returns 503. Falling through to
+    // a direct save keeps the list usable instead of blocking every add.
+    if (!aiEnabled) {
+      const ok = await saveDirect(raw);
+      setLoading(false);
+      if (!ok) return;
+      finish();
+      return;
+    }
+
     try {
       const res = await fetch('/api/ai/parse-input', {
-        method: 'POST',
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, context }),
+        body:    JSON.stringify({ text: raw, context }),
       });
+
+      if (res.status === 503) {
+        const ok = await saveDirect(raw);
+        setLoading(false);
+        if (ok) finish();
+        return;
+      }
+
       const data = await res.json();
-      if (data.error) { setError(data.error); setLoading(false); return; }
+      if (!res.ok || data.error || !data.title) {
+        const ok = await saveDirect(raw);
+        setLoading(false);
+        if (ok) finish();
+        return;
+      }
+
       setParsed(data);
       setStep('preview');
     } catch {
-      setError('Something went wrong. Try again.');
+      const ok = await saveDirect(raw);
+      if (ok) finish();
     }
     setLoading(false);
+  }
+
+  function finish() {
+    setText('');
+    setParsed(null);
+    setStep('done');
+    setTimeout(() => setStep('input'), 1200);
   }
 
   async function handleSave() {
@@ -55,11 +105,8 @@ export function NaturalLanguageInput({ profileId, context, onAdded }: NaturalLan
     const res = await createLifeItem(profileId, { ...parsed, ai_generated: true });
     setLoading(false);
     if (res.error) { setError(res.error); return; }
-    onAdded?.(res.item!);
-    setText('');
-    setParsed(null);
-    setStep('done');
-    setTimeout(() => setStep('input'), 1200);
+    if (res.item) onAdded?.(res.item);
+    finish();
   }
 
   function handleEdit() {
@@ -68,9 +115,9 @@ export function NaturalLanguageInput({ profileId, context, onAdded }: NaturalLan
     setTimeout(() => textareaRef.current?.focus(), 50);
   }
 
-  const catColor = parsed?.category
-    ? (CATEGORY_COLORS[parsed.category] ?? CATEGORY_COLORS.other)
-    : CATEGORY_COLORS.other;
+  const catStyle = parsed?.category
+    ? (CATEGORY_STYLES[parsed.category] ?? CATEGORY_STYLES.other)
+    : CATEGORY_STYLES.other;
 
   return (
     <div className="flex flex-col gap-3">
@@ -78,20 +125,34 @@ export function NaturalLanguageInput({ profileId, context, onAdded }: NaturalLan
         {step === 'input' && (
           <motion.div key="input" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <div className="flex gap-2">
+              <label htmlFor="life-item-input" className="sr-only">
+                Add something to your list
+              </label>
               <textarea
+                id="life-item-input"
                 ref={textareaRef}
                 value={text}
                 onChange={e => setText(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleParse(); } }}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAdd(); }
+                }}
                 rows={2}
-                placeholder="e.g. Book dentist for next month, schedule car service every 6 months..."
-                className="flex-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] text-[var(--color-text)] p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                maxLength={500}
+                placeholder={aiEnabled
+                  ? 'e.g. Book dentist for next month, service the car every 6 months…'
+                  : 'e.g. Book the dentist'}
+                className="flex-1 rounded-[var(--border-radius)] border border-[var(--color-border)] bg-[var(--color-bg-card)] text-[var(--color-text)] p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
               />
-              <Button onClick={handleParse} loading={loading} className="self-end">
+              <Button
+                onClick={handleAdd}
+                loading={loading}
+                disabled={!text.trim()}
+                className="self-end"
+              >
                 Add
               </Button>
             </div>
-            {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+            {error && <p role="alert" className="text-xs text-red-600 mt-1">{error}</p>}
           </motion.div>
         )}
 
@@ -101,43 +162,42 @@ export function NaturalLanguageInput({ profileId, context, onAdded }: NaturalLan
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="bg-[var(--color-bg-card)] border border-[var(--color-border)] rounded-xl p-4 flex flex-col gap-3"
+            className="bg-[var(--color-bg-card)] border border-[var(--color-border)] rounded-[var(--border-radius)] p-4 flex flex-col gap-3"
           >
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex-1">
-                <p className="font-semibold text-[var(--color-text)]">{parsed.title}</p>
-                {parsed.body && (
-                  <p className="text-sm text-[var(--color-text)] opacity-60 mt-0.5">{parsed.body}</p>
+            <div>
+              <p className="font-semibold text-[var(--color-text)]">{parsed.title}</p>
+              {parsed.body && (
+                <p className="text-sm text-[var(--color-text)] opacity-60 mt-0.5">{parsed.body}</p>
+              )}
+              <div className="flex flex-wrap gap-2 mt-2">
+                {parsed.category && (
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${catStyle}`}>
+                    {parsed.category}
+                  </span>
                 )}
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {parsed.category && (
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${catColor}`}>
-                      {parsed.category}
-                    </span>
-                  )}
-                  {parsed.due_at && (
-                    <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">
-                      Due {new Date(parsed.due_at).toLocaleDateString()}
-                    </span>
-                  )}
-                  {parsed.recurrence_pattern && (
-                    <span className="text-xs bg-purple-50 text-purple-600 px-2 py-0.5 rounded-full">
-                      Recurring
-                    </span>
-                  )}
-                </div>
+                {parsed.due_at && (
+                  <span className="text-xs bg-sky-50 text-sky-700 px-2 py-0.5 rounded-full">
+                    Due {new Date(parsed.due_at).toLocaleDateString()}
+                  </span>
+                )}
+                {parsed.recurrence_pattern && (
+                  <span className="text-xs bg-violet-50 text-violet-700 px-2 py-0.5 rounded-full">
+                    Recurring
+                  </span>
+                )}
               </div>
             </div>
 
-            {error && <p className="text-xs text-red-500">{error}</p>}
+            {error && <p role="alert" className="text-xs text-red-600">{error}</p>}
 
             <div className="flex gap-2">
               <Button onClick={handleSave} loading={loading} className="flex-1">
                 Save item
               </Button>
               <button
+                type="button"
                 onClick={handleEdit}
-                className="text-sm px-4 py-2 rounded-lg border border-[var(--color-border)] text-[var(--color-text)] opacity-60 hover:opacity-100 transition-opacity"
+                className="text-sm px-4 rounded-[var(--border-radius)] border border-[var(--color-border)] text-[var(--color-text)] opacity-60 hover:opacity-100 transition-opacity min-h-[44px]"
               >
                 Edit
               </button>

@@ -1,7 +1,7 @@
 import { redirect }          from 'next/navigation';
 import { AnimatePresence }   from 'framer-motion';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
-import { getActiveProfile }  from '@/app/actions/profile';
+import { getCurrentProfile } from '@/lib/current-profile';
 import { QuestBoard }        from '@/components/higgy/QuestBoard';
 import { BottomNav }         from '@/components/higgy/BottomNav';
 
@@ -10,15 +10,9 @@ export default async function QuestsPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const activeProfileId = await getActiveProfile();
-  if (!activeProfileId) redirect('/dashboard');
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('display_name, family_id, skin')
-    .eq('id', activeProfileId)
-    .single();
-  if (!profile) redirect('/dashboard');
+  const profile = await getCurrentProfile();
+  if (!profile) redirect('/onboarding');
+  const activeProfileId = profile.id;
 
   const { data: family } = await supabase
     .from('families')

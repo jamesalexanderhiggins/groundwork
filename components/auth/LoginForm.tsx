@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -20,15 +20,13 @@ export function LoginForm() {
 
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError]       = useState('');
+  const [formError, setError]   = useState('');
   const [notice, setNotice]     = useState('');
   const [loading, setLoading]   = useState(false);
 
-  // Surface errors handed back by the auth callback
-  useEffect(() => {
-    const cbError = params.get('error');
-    if (cbError) setError(cbError);
-  }, [params]);
+  // Errors handed back by the auth callback are read straight from the URL.
+  // Copying them into state inside an effect caused a cascading render.
+  const error = formError || (params.get('error') ?? '');
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

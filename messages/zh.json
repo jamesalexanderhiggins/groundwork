@@ -67,21 +67,58 @@
     "your_balance": "您的余额",
     "no_tasks_today": "今天没有任务。",
     "all_done": "全部完成！",
-    "tap_to_complete": "点击完成"
+    "tap_to_complete": "点击完成",
+    "anytime_tasks": "随时任务"
   },
   "badges": {
-    "first_steps":     { "title": "第一步",         "desc": "旅程开始了。" },
-    "keeper_of_order": { "title": "秩序守护者",     "desc": "七天。不间断。" },
-    "streak_legend":   { "title": "连续记录传奇",   "desc": "三十天的卓越。" },
-    "quest_champion":  { "title": "任务冠军",       "desc": "完成了第一个任务。" },
-    "quest_master":    { "title": "任务大师",       "desc": "征服了十个任务。" },
-    "gift_giver":      { "title": "礼物赠送者",     "desc": "使用了礼物窗口。" },
-    "community_hero":  { "title": "社区英雄",       "desc": "三次服务行为。" },
-    "first_cashout":   { "title": "首次提现",       "desc": "真实的钱，真实赚到的。" },
-    "big_saver":       { "title": "大储蓄家",       "desc": "存了一百枚硬币。" },
-    "virtue_rising":   { "title": "美德上升",       "desc": "达到美德等级5。" },
-    "golden_moment":   { "title": "黄金时刻",       "desc": "您的第一枚黄金硬币。" },
-    "peaceful_player": { "title": "和平玩家",       "desc": "国际象棋和平奖励五次。" }
+    "first_steps": {
+      "title": "第一步",
+      "desc": "旅程开始了。"
+    },
+    "keeper_of_order": {
+      "title": "秩序守护者",
+      "desc": "七天。不间断。"
+    },
+    "streak_legend": {
+      "title": "连续记录传奇",
+      "desc": "三十天的卓越。"
+    },
+    "quest_champion": {
+      "title": "任务冠军",
+      "desc": "完成了第一个任务。"
+    },
+    "quest_master": {
+      "title": "任务大师",
+      "desc": "征服了十个任务。"
+    },
+    "gift_giver": {
+      "title": "礼物赠送者",
+      "desc": "使用了礼物窗口。"
+    },
+    "community_hero": {
+      "title": "社区英雄",
+      "desc": "三次服务行为。"
+    },
+    "first_cashout": {
+      "title": "首次提现",
+      "desc": "真实的钱，真实赚到的。"
+    },
+    "big_saver": {
+      "title": "大储蓄家",
+      "desc": "存了一百枚硬币。"
+    },
+    "virtue_rising": {
+      "title": "美德上升",
+      "desc": "达到美德等级5。"
+    },
+    "golden_moment": {
+      "title": "黄金时刻",
+      "desc": "您的第一枚黄金硬币。"
+    },
+    "peaceful_player": {
+      "title": "和平玩家",
+      "desc": "国际象棋和平奖励五次。"
+    }
   },
   "nav": {
     "home": "首页",

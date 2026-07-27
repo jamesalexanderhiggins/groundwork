@@ -67,21 +67,58 @@
     "your_balance": "残高",
     "no_tasks_today": "今日の課題はありません。",
     "all_done": "全部完了！",
-    "tap_to_complete": "タップして完了"
+    "tap_to_complete": "タップして完了",
+    "anytime_tasks": "いつでもできるタスク"
   },
   "badges": {
-    "first_steps":     { "title": "第一歩",             "desc": "旅が始まります。" },
-    "keeper_of_order": { "title": "秩序の守護者",       "desc": "七日間。途切れなく。" },
-    "streak_legend":   { "title": "連続記録の伝説",     "desc": "三十日間の卓越。" },
-    "quest_champion":  { "title": "クエストチャンピオン","desc": "初めてのクエストを完了。" },
-    "quest_master":    { "title": "クエストマスター",    "desc": "十のクエストを制覇。" },
-    "gift_giver":      { "title": "贈り物名人",         "desc": "ギフトウィンドウを使用。" },
-    "community_hero":  { "title": "地域のヒーロー",     "desc": "三つの奉仕活動。" },
-    "first_cashout":   { "title": "初換金",             "desc": "本物のお金、本当に稼いだ。" },
-    "big_saver":       { "title": "大きな貯蓄家",       "desc": "百枚のコインを貯めた。" },
-    "virtue_rising":   { "title": "美徳の向上",         "desc": "美徳レベル5達成。" },
-    "golden_moment":   { "title": "黄金の瞬間",         "desc": "初めてのゴールデンコイン。" },
-    "peaceful_player": { "title": "平和なプレイヤー",   "desc": "チェスで平和ボーナス五回。" }
+    "first_steps": {
+      "title": "第一歩",
+      "desc": "旅が始まります。"
+    },
+    "keeper_of_order": {
+      "title": "秩序の守護者",
+      "desc": "七日間。途切れなく。"
+    },
+    "streak_legend": {
+      "title": "連続記録の伝説",
+      "desc": "三十日間の卓越。"
+    },
+    "quest_champion": {
+      "title": "クエストチャンピオン",
+      "desc": "初めてのクエストを完了。"
+    },
+    "quest_master": {
+      "title": "クエストマスター",
+      "desc": "十のクエストを制覇。"
+    },
+    "gift_giver": {
+      "title": "贈り物名人",
+      "desc": "ギフトウィンドウを使用。"
+    },
+    "community_hero": {
+      "title": "地域のヒーロー",
+      "desc": "三つの奉仕活動。"
+    },
+    "first_cashout": {
+      "title": "初換金",
+      "desc": "本物のお金、本当に稼いだ。"
+    },
+    "big_saver": {
+      "title": "大きな貯蓄家",
+      "desc": "百枚のコインを貯めた。"
+    },
+    "virtue_rising": {
+      "title": "美徳の向上",
+      "desc": "美徳レベル5達成。"
+    },
+    "golden_moment": {
+      "title": "黄金の瞬間",
+      "desc": "初めてのゴールデンコイン。"
+    },
+    "peaceful_player": {
+      "title": "平和なプレイヤー",
+      "desc": "チェスで平和ボーナス五回。"
+    }
   },
   "nav": {
     "home": "ホーム",

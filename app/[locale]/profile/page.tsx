@@ -1,6 +1,6 @@
 import { redirect }                   from 'next/navigation';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
-import { getActiveProfile }           from '@/app/actions/profile';
+import { getCurrentProfile }          from '@/lib/current-profile';
 import { BottomNav }                  from '@/components/higgy/BottomNav';
 import { VirtueBar }                  from '@/components/higgy/VirtueBar';
 import { SkinPicker }                 from '@/components/higgy/SkinPicker';
@@ -12,15 +12,9 @@ export default async function ProfilePage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const activeProfileId = await getActiveProfile();
-  if (!activeProfileId) redirect('/dashboard');
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id, display_name, family_id, skin, virtue_level, virtue_points')
-    .eq('id', activeProfileId)
-    .single();
-  if (!profile) redirect('/dashboard');
+  const profile = await getCurrentProfile();
+  if (!profile) redirect('/onboarding');
+  const activeProfileId = profile.id;
 
   const { data: earnedBadges } = await supabase
     .from('profile_badges')

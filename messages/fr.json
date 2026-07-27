@@ -67,21 +67,58 @@
     "your_balance": "Ton solde",
     "no_tasks_today": "Aucune tâche aujourd'hui.",
     "all_done": "Tout est fait !",
-    "tap_to_complete": "Appuie pour terminer"
+    "tap_to_complete": "Appuie pour terminer",
+    "anytime_tasks": "Tâches à tout moment"
   },
   "badges": {
-    "first_steps":     { "title": "Premiers Pas",         "desc": "Le voyage commence." },
-    "keeper_of_order": { "title": "Gardien de l'Ordre",   "desc": "Sept jours. Sans interruption." },
-    "streak_legend":   { "title": "Légende des Séries",   "desc": "Trente jours d'excellence." },
-    "quest_champion":  { "title": "Champion de Quête",    "desc": "Ta première quête accomplie." },
-    "quest_master":    { "title": "Maître des Quêtes",    "desc": "Dix quêtes conquises." },
-    "gift_giver":      { "title": "Donneur de Cadeaux",   "desc": "Tu as utilisé la fenêtre cadeau." },
-    "community_hero":  { "title": "Héros Communautaire",  "desc": "Trois actes de service." },
-    "first_cashout":   { "title": "Premier Retrait",      "desc": "De l'argent réel, vraiment gagné." },
-    "big_saver":       { "title": "Grand Épargnant",      "desc": "Cent pièces économisées." },
-    "virtue_rising":   { "title": "Vertu en Hausse",      "desc": "Niveau de Vertu 5 atteint." },
-    "golden_moment":   { "title": "Moment Doré",          "desc": "Ta première pièce dorée." },
-    "peaceful_player": { "title": "Joueur Paisible",      "desc": "Bonus de paix aux échecs cinq fois." }
+    "first_steps": {
+      "title": "Premiers Pas",
+      "desc": "Le voyage commence."
+    },
+    "keeper_of_order": {
+      "title": "Gardien de l'Ordre",
+      "desc": "Sept jours. Sans interruption."
+    },
+    "streak_legend": {
+      "title": "Légende des Séries",
+      "desc": "Trente jours d'excellence."
+    },
+    "quest_champion": {
+      "title": "Champion de Quête",
+      "desc": "Ta première quête accomplie."
+    },
+    "quest_master": {
+      "title": "Maître des Quêtes",
+      "desc": "Dix quêtes conquises."
+    },
+    "gift_giver": {
+      "title": "Donneur de Cadeaux",
+      "desc": "Tu as utilisé la fenêtre cadeau."
+    },
+    "community_hero": {
+      "title": "Héros Communautaire",
+      "desc": "Trois actes de service."
+    },
+    "first_cashout": {
+      "title": "Premier Retrait",
+      "desc": "De l'argent réel, vraiment gagné."
+    },
+    "big_saver": {
+      "title": "Grand Épargnant",
+      "desc": "Cent pièces économisées."
+    },
+    "virtue_rising": {
+      "title": "Vertu en Hausse",
+      "desc": "Niveau de Vertu 5 atteint."
+    },
+    "golden_moment": {
+      "title": "Moment Doré",
+      "desc": "Ta première pièce dorée."
+    },
+    "peaceful_player": {
+      "title": "Joueur Paisible",
+      "desc": "Bonus de paix aux échecs cinq fois."
+    }
   },
   "nav": {
     "home": "Accueil",

@@ -67,21 +67,58 @@
     "your_balance": "Dein Guthaben",
     "no_tasks_today": "Keine Aufgaben heute.",
     "all_done": "Alles erledigt!",
-    "tap_to_complete": "Tippen zum Abschließen"
+    "tap_to_complete": "Tippen zum Abschließen",
+    "anytime_tasks": "Aufgaben jederzeit"
   },
   "badges": {
-    "first_steps":     { "title": "Erste Schritte",       "desc": "Die Reise beginnt." },
-    "keeper_of_order": { "title": "Hüter der Ordnung",    "desc": "Sieben Tage. Ununterbrochen." },
-    "streak_legend":   { "title": "Streak-Legende",       "desc": "Dreißig Tage Exzellenz." },
-    "quest_champion":  { "title": "Quest-Champion",       "desc": "Deine erste Quest abgeschlossen." },
-    "quest_master":    { "title": "Quest-Meister",        "desc": "Zehn Quests bezwungen." },
-    "gift_giver":      { "title": "Geschenkgeber",        "desc": "Du hast das Geschenkfenster genutzt." },
-    "community_hero":  { "title": "Gemeinschaftsheld",    "desc": "Drei Hilfsakte." },
-    "first_cashout":   { "title": "Erste Auszahlung",     "desc": "Echtes Geld, wirklich verdient." },
-    "big_saver":       { "title": "Großer Sparer",        "desc": "Hundert Münzen gespart." },
-    "virtue_rising":   { "title": "Tugend im Aufstieg",   "desc": "Tugendstufe 5 erreicht." },
-    "golden_moment":   { "title": "Goldener Moment",      "desc": "Deine erste goldene Münze." },
-    "peaceful_player": { "title": "Friedlicher Spieler",  "desc": "Fünfmal Friedensbonus beim Schach." }
+    "first_steps": {
+      "title": "Erste Schritte",
+      "desc": "Die Reise beginnt."
+    },
+    "keeper_of_order": {
+      "title": "Hüter der Ordnung",
+      "desc": "Sieben Tage. Ununterbrochen."
+    },
+    "streak_legend": {
+      "title": "Streak-Legende",
+      "desc": "Dreißig Tage Exzellenz."
+    },
+    "quest_champion": {
+      "title": "Quest-Champion",
+      "desc": "Deine erste Quest abgeschlossen."
+    },
+    "quest_master": {
+      "title": "Quest-Meister",
+      "desc": "Zehn Quests bezwungen."
+    },
+    "gift_giver": {
+      "title": "Geschenkgeber",
+      "desc": "Du hast das Geschenkfenster genutzt."
+    },
+    "community_hero": {
+      "title": "Gemeinschaftsheld",
+      "desc": "Drei Hilfsakte."
+    },
+    "first_cashout": {
+      "title": "Erste Auszahlung",
+      "desc": "Echtes Geld, wirklich verdient."
+    },
+    "big_saver": {
+      "title": "Großer Sparer",
+      "desc": "Hundert Münzen gespart."
+    },
+    "virtue_rising": {
+      "title": "Tugend im Aufstieg",
+      "desc": "Tugendstufe 5 erreicht."
+    },
+    "golden_moment": {
+      "title": "Goldener Moment",
+      "desc": "Deine erste goldene Münze."
+    },
+    "peaceful_player": {
+      "title": "Friedlicher Spieler",
+      "desc": "Fünfmal Friedensbonus beim Schach."
+    }
   },
   "nav": {
     "home": "Startseite",

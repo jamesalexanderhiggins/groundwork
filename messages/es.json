@@ -67,21 +67,58 @@
     "your_balance": "Tu saldo",
     "no_tasks_today": "Sin tareas hoy.",
     "all_done": "¡Todo listo!",
-    "tap_to_complete": "Toca para completar"
+    "tap_to_complete": "Toca para completar",
+    "anytime_tasks": "Tareas en cualquier momento"
   },
   "badges": {
-    "first_steps":     { "title": "Primeros Pasos",    "desc": "El viaje comienza." },
-    "keeper_of_order": { "title": "Guardián del Orden","desc": "Siete días. Ininterrumpidos." },
-    "streak_legend":   { "title": "Leyenda de Racha",  "desc": "Treinta días de excelencia." },
-    "quest_champion":  { "title": "Campeón de Misión", "desc": "Tu primera misión completada." },
-    "quest_master":    { "title": "Maestro de Misiones","desc": "Diez misiones conquistadas." },
-    "gift_giver":      { "title": "Dador de Regalos",  "desc": "Usaste la ventana de regalos." },
-    "community_hero":  { "title": "Héroe Comunitario", "desc": "Tres actos de servicio." },
-    "first_cashout":   { "title": "Primer Retiro",     "desc": "Dinero real, realmente ganado." },
-    "big_saver":       { "title": "Gran Ahorrador",    "desc": "Cien monedas ahorradas." },
-    "virtue_rising":   { "title": "Virtud en Alza",    "desc": "Nivel de Virtud 5 alcanzado." },
-    "golden_moment":   { "title": "Momento Dorado",    "desc": "Tu primera moneda dorada." },
-    "peaceful_player": { "title": "Jugador Pacífico",  "desc": "Bono de paz en ajedrez cinco veces." }
+    "first_steps": {
+      "title": "Primeros Pasos",
+      "desc": "El viaje comienza."
+    },
+    "keeper_of_order": {
+      "title": "Guardián del Orden",
+      "desc": "Siete días. Ininterrumpidos."
+    },
+    "streak_legend": {
+      "title": "Leyenda de Racha",
+      "desc": "Treinta días de excelencia."
+    },
+    "quest_champion": {
+      "title": "Campeón de Misión",
+      "desc": "Tu primera misión completada."
+    },
+    "quest_master": {
+      "title": "Maestro de Misiones",
+      "desc": "Diez misiones conquistadas."
+    },
+    "gift_giver": {
+      "title": "Dador de Regalos",
+      "desc": "Usaste la ventana de regalos."
+    },
+    "community_hero": {
+      "title": "Héroe Comunitario",
+      "desc": "Tres actos de servicio."
+    },
+    "first_cashout": {
+      "title": "Primer Retiro",
+      "desc": "Dinero real, realmente ganado."
+    },
+    "big_saver": {
+      "title": "Gran Ahorrador",
+      "desc": "Cien monedas ahorradas."
+    },
+    "virtue_rising": {
+      "title": "Virtud en Alza",
+      "desc": "Nivel de Virtud 5 alcanzado."
+    },
+    "golden_moment": {
+      "title": "Momento Dorado",
+      "desc": "Tu primera moneda dorada."
+    },
+    "peaceful_player": {
+      "title": "Jugador Pacífico",
+      "desc": "Bono de paz en ajedrez cinco veces."
+    }
   },
   "nav": {
     "home": "Inicio",

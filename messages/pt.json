@@ -67,21 +67,58 @@
     "your_balance": "Seu saldo",
     "no_tasks_today": "Sem tarefas hoje.",
     "all_done": "Tudo pronto!",
-    "tap_to_complete": "Toque para concluir"
+    "tap_to_complete": "Toque para concluir",
+    "anytime_tasks": "Tarefas a qualquer hora"
   },
   "badges": {
-    "first_steps":     { "title": "Primeiros Passos",     "desc": "A jornada começa." },
-    "keeper_of_order": { "title": "Guardião da Ordem",    "desc": "Sete dias. Sem interrupção." },
-    "streak_legend":   { "title": "Lenda das Sequências", "desc": "Trinta dias de excelência." },
-    "quest_champion":  { "title": "Campeão de Missão",    "desc": "Sua primeira missão concluída." },
-    "quest_master":    { "title": "Mestre das Missões",   "desc": "Dez missões conquistadas." },
-    "gift_giver":      { "title": "Doador de Presentes",  "desc": "Usou a janela de presentes." },
-    "community_hero":  { "title": "Herói Comunitário",    "desc": "Três atos de serviço." },
-    "first_cashout":   { "title": "Primeiro Resgate",     "desc": "Dinheiro real, realmente ganho." },
-    "big_saver":       { "title": "Grande Poupador",      "desc": "Cem moedas poupadas." },
-    "virtue_rising":   { "title": "Virtude em Ascensão",  "desc": "Nível de Virtude 5 alcançado." },
-    "golden_moment":   { "title": "Momento Dourado",      "desc": "Sua primeira moeda dourada." },
-    "peaceful_player": { "title": "Jogador Pacífico",     "desc": "Bônus de paz no xadrez cinco vezes." }
+    "first_steps": {
+      "title": "Primeiros Passos",
+      "desc": "A jornada começa."
+    },
+    "keeper_of_order": {
+      "title": "Guardião da Ordem",
+      "desc": "Sete dias. Sem interrupção."
+    },
+    "streak_legend": {
+      "title": "Lenda das Sequências",
+      "desc": "Trinta dias de excelência."
+    },
+    "quest_champion": {
+      "title": "Campeão de Missão",
+      "desc": "Sua primeira missão concluída."
+    },
+    "quest_master": {
+      "title": "Mestre das Missões",
+      "desc": "Dez missões conquistadas."
+    },
+    "gift_giver": {
+      "title": "Doador de Presentes",
+      "desc": "Usou a janela de presentes."
+    },
+    "community_hero": {
+      "title": "Herói Comunitário",
+      "desc": "Três atos de serviço."
+    },
+    "first_cashout": {
+      "title": "Primeiro Resgate",
+      "desc": "Dinheiro real, realmente ganho."
+    },
+    "big_saver": {
+      "title": "Grande Poupador",
+      "desc": "Cem moedas poupadas."
+    },
+    "virtue_rising": {
+      "title": "Virtude em Ascensão",
+      "desc": "Nível de Virtude 5 alcançado."
+    },
+    "golden_moment": {
+      "title": "Momento Dourado",
+      "desc": "Sua primeira moeda dourada."
+    },
+    "peaceful_player": {
+      "title": "Jogador Pacífico",
+      "desc": "Bônus de paz no xadrez cinco vezes."
+    }
   },
   "nav": {
     "home": "Início",

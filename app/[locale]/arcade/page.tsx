@@ -1,6 +1,6 @@
 import { redirect }             from 'next/navigation';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
-import { getActiveProfile }    from '@/app/actions/profile';
+import { getCurrentProfile }   from '@/lib/current-profile';
 import { ScreenTimeSelector }  from '@/components/higgy/ScreenTimeSelector';
 import { BottomNav }           from '@/components/higgy/BottomNav';
 import { CurrencyDisplay }     from '@/components/higgy/CurrencyDisplay';
@@ -17,15 +17,9 @@ export default async function ArcadePage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const activeProfileId = await getActiveProfile();
-  if (!activeProfileId) redirect('/dashboard');
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('display_name, family_id, skin')
-    .eq('id', activeProfileId)
-    .single();
-  if (!profile) redirect('/dashboard');
+  const profile = await getCurrentProfile();
+  if (!profile) redirect('/onboarding');
+  const activeProfileId = profile.id;
 
   const { data: family } = await supabase
     .from('families')

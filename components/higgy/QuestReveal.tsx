@@ -27,18 +27,24 @@ interface QuestRevealProps {
 }
 
 function useTypewriter(text: string, speed = 40) {
-  const [displayed, setDisplayed] = useState('');
+  const [index, setIndex]       = useState(0);
+  const [prevText, setPrevText] = useState(text);
+
+  // Reset during render when the text changes. This is the supported way to
+  // adjust state from props — resetting inside an effect caused a cascading
+  // re-render on every reveal.
+  if (prevText !== text) {
+    setPrevText(text);
+    setIndex(0);
+  }
+
   useEffect(() => {
-    setDisplayed('');
-    let i = 0;
-    const interval = setInterval(() => {
-      i++;
-      setDisplayed(text.slice(0, i));
-      if (i >= text.length) clearInterval(interval);
-    }, speed);
-    return () => clearInterval(interval);
-  }, [text, speed]);
-  return displayed;
+    if (index >= text.length) return;
+    const timer = setTimeout(() => setIndex(n => n + 1), speed);
+    return () => clearTimeout(timer);
+  }, [index, text, speed]);
+
+  return text.slice(0, index);
 }
 
 function useCountdown(expiresAt: string | null) {

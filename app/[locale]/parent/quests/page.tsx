@@ -38,7 +38,7 @@ export default async function ParentQuestsPage() {
 
       <section className="bg-[var(--color-bg-card)] rounded-[var(--border-radius)] p-6 shadow mb-6">
         <h2 className="font-semibold text-[var(--color-text)] mb-4">Create a quest</h2>
-        <CreateQuestForm children={children ?? []} />
+        <CreateQuestForm assignees={children ?? []} />
       </section>
 
       <section>
