@@ -65,6 +65,7 @@ export function QuestReveal({ quest, profileId, largeName, smallName, goldenName
   const countdown = useCountdown(quest.quest_expires_at);
   const [loading, setLoading] = useState(false);
   const [done,    setDone]    = useState(false);
+  const [error,   setError]   = useState('');
 
   const rewardLabel = quest.reward_golden > 0
     ? `${quest.reward_golden} ${goldenName}`
@@ -74,21 +75,32 @@ export function QuestReveal({ quest, profileId, largeName, smallName, goldenName
 
   async function handleAccept() {
     setLoading(true);
-    await acceptQuest(quest.id, profileId);
+    setError('');
+    // Two children can race for the same quest — the loser needs to be told.
+    const result = await acceptQuest(quest.id, profileId);
     setLoading(false);
+    if (result && 'error' in result && result.error) {
+      setError(result.error);
+      return;
+    }
     onClose();
   }
 
   async function handleComplete() {
     setLoading(true);
+    setError('');
     const result = await completeQuest(quest.id, profileId);
     setLoading(false);
-    if ('pendingApproval' in result) {
+    if ('error' in result && result.error) {
+      setError(result.error);
+      return;
+    }
+    if ('pendingApproval' in result && result.pendingApproval) {
       setDone(true);
       setTimeout(onClose, 2000);
-    } else {
-      onClose();
+      return;
     }
+    onClose();
   }
 
   const fmtCountdown = (s: number) => {
@@ -128,6 +140,11 @@ export function QuestReveal({ quest, profileId, largeName, smallName, goldenName
         </div>
 
         <div className="p-6 flex flex-col gap-4">
+          {error && (
+            <p role="alert" className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">
+              {error}
+            </p>
+          )}
           {quest.description && (
             <p className="text-[var(--color-text)] opacity-70 text-sm leading-relaxed">
               {quest.description}

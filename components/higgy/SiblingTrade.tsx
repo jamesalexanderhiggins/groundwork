@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { proposeTrade, respondToTrade } from '@/app/actions/trades';
 import { Button } from '@/components/shared/Button';
 import { Input } from '@/components/shared/Input';
@@ -33,6 +34,7 @@ export function SiblingTrade({ profileId, siblings, pendingTrades, largeName, sm
   const [error,        setError]        = useState('');
   const [success,      setSuccess]      = useState('');
   const [pending,      startTransition] = useTransition();
+  const router = useRouter();
 
   async function handleSend() {
     if (!toProfile) { setError('Pick a sibling.'); return; }
@@ -48,8 +50,19 @@ export function SiblingTrade({ profileId, siblings, pendingTrades, largeName, sm
   }
 
   async function handleRespond(tradeId: string, accept: boolean) {
+    setError(''); setSuccess('');
     startTransition(async () => {
-      await respondToTrade(tradeId, accept, profileId);
+      // Accepting can legitimately fail — the sender may have spent the
+      // coins since offering. Swallowing that left the row on screen with
+      // no explanation.
+      const result = await respondToTrade(tradeId, accept, profileId);
+      if (result && 'error' in result && result.error) {
+        setError(result.error);
+        return;
+      }
+      setSuccess(accept ? 'Trade accepted!' : 'Trade declined.');
+      setTimeout(() => setSuccess(''), 3000);
+      router.refresh();
     });
   }
 
