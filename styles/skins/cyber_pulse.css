@@ -4,6 +4,7 @@
   --color-bg-card:   #111111;
   --color-text:      #00FF41;
   --color-accent:    #00BFFF;
+  --color-border:    color-mix(in srgb, var(--color-text) 16%, transparent);
   --color-reward:    #FFD700;
   --font-display:    'Share Tech Mono', 'Courier New', monospace;
   --font-body:       'Roboto Mono', 'Courier New', monospace;

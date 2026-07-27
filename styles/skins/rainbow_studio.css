@@ -4,6 +4,7 @@
   --color-bg-card:   #FFFFFF;
   --color-text:      #2C2C2C;
   --color-accent:    #4ECDC4;
+  --color-border:    color-mix(in srgb, var(--color-text) 16%, transparent);
   --color-reward:    #FFD700;
   --font-display:    'Comic Sans MS', cursive, sans-serif;
   --font-body:       system-ui, sans-serif;

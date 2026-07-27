@@ -4,6 +4,7 @@
   --color-bg-card:   #FFFFFF;
   --color-text:      #374151;
   --color-accent:    #9CA3AF;
+  --color-border:    color-mix(in srgb, var(--color-text) 16%, transparent);
   --color-reward:    #D4AF37;
   --font-display:    'Noto Serif JP', Georgia, serif;
   --font-body:       Georgia, serif;

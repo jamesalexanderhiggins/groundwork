@@ -4,6 +4,7 @@
   --color-bg-card:   #12121A;
   --color-text:      #D4D4DC;
   --color-accent:    #4B0082;
+  --color-border:    color-mix(in srgb, var(--color-text) 16%, transparent);
   --color-reward:    #C0A060;
   --font-display:    'Cinzel', Georgia, serif;
   --font-body:       Georgia, serif;

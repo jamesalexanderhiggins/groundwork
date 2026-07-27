@@ -1,97 +1,157 @@
-import { redirect }       from 'next/navigation';
-import Link               from 'next/link';
+import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
-import { getActiveProfile } from '@/app/actions/profile';
 import { CreateChildForm } from '@/components/parent/CreateChildForm';
+import { SKINS } from '@/lib/skins';
+import { stageIcon, stageLabel, type LifeStage } from '@/lib/life-stage';
+
+export const metadata = { title: 'Family members' };
+
+const SKIN_EMOJI: Record<string, string> = {
+  cloud_kingdom:  '☁️',
+  rainbow_studio: '🌈',
+  deep_ocean:     '🌊',
+  jungle_quest:   '🌴',
+  zen_garden:     '🌸',
+  space_command:  '🚀',
+  pixel_world:    '🎮',
+  cyber_pulse:    '⚡',
+  first_person:   '🎯',
+  dark_knight:    '🌙',
+};
+
+const skinName = (key: string) =>
+  SKINS.find(s => s.key === key)?.name ?? key.replace(/_/g, ' ');
 
 export default async function ChildrenPage() {
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const activeProfileId = await getActiveProfile();
-  if (!activeProfileId) redirect('/dashboard');
-
+  // Resolve the parent from the signed-in user. Reading the active_profile
+  // cookie meant that once a parent switched to a child this page bounced
+  // straight back to the dashboard and could never be opened.
   const { data: parentProfile } = await supabase
     .from('profiles')
     .select('family_id, role')
-    .eq('id', activeProfileId)
+    .eq('user_id', user.id)
     .single();
 
-  if (!parentProfile || !['parent', 'admin'].includes(parentProfile.role)) {
-    redirect('/dashboard');
-  }
+  if (!parentProfile) redirect('/onboarding');
+  if (!['parent', 'admin'].includes(parentProfile.role)) redirect('/dashboard');
 
-  const { data: children } = await supabase
+  const { data: family } = await supabase
+    .from('families')
+    .select('large_coin_name, small_coin_name, golden_coin_name')
+    .eq('id', parentProfile.family_id)
+    .single();
+
+  const { data: members } = await supabase
     .from('profiles')
-    .select('id, display_name, life_stage, skin, virtue_level, virtue_points')
+    .select('id, display_name, life_stage, skin, role, virtue_level')
     .eq('family_id', parentProfile.family_id)
-    .eq('role', 'child')
-    .order('display_name');
+    .order('created_at', { ascending: true });
 
-  const { data: balances } = await supabase
-    .from('balance_accounts')
-    .select('profile_id, large_balance, small_balance, golden_balance')
-    .in('profile_id', (children ?? []).map(c => c.id));
+  const children = (members ?? []).filter(m => m.role === 'child');
+  const adults   = (members ?? []).filter(m => m.role !== 'child');
+
+  const { data: balances } = children.length
+    ? await supabase
+        .from('balance_accounts')
+        .select('profile_id, large_balance, small_balance, golden_balance')
+        .in('profile_id', children.map(c => c.id))
+    : { data: [] };
 
   const balanceMap = Object.fromEntries((balances ?? []).map(b => [b.profile_id, b]));
 
+  const largeName  = family?.large_coin_name  ?? 'Higg';
+  const smallName  = family?.small_coin_name  ?? 'Ginsey';
+  const goldenName = family?.golden_coin_name ?? 'Golden';
+
   return (
-    <main className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm px-6 py-4 sticky top-0 z-10">
+    <main className="min-h-screen bg-[var(--color-bg)]">
+      <header className="bg-[var(--color-bg-card)] shadow-[var(--shadow-sm)] px-6 py-4 sticky top-0 z-10">
         <div className="max-w-2xl mx-auto flex items-center gap-3">
-          <Link href="/dashboard" className="text-gray-400 hover:text-gray-600">←</Link>
-          <h1 className="font-bold text-lg">Manage Children</h1>
+          <Link
+            href="/dashboard"
+            className="text-[var(--color-primary)] hover:underline text-sm"
+            aria-label="Back to dashboard"
+          >
+            ←
+          </Link>
+          <h1 className="font-bold text-lg text-[var(--color-text)]">Family members</h1>
         </div>
       </header>
 
-      <div className="max-w-2xl mx-auto px-6 py-6 space-y-6">
-        {/* Existing children */}
-        {(children ?? []).length > 0 && (
+      <div className="max-w-2xl mx-auto px-6 py-6 flex flex-col gap-6">
+
+        {children.length > 0 && (
           <section>
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-              Children ({children!.length})
+            <h2 className="text-xs font-semibold opacity-50 text-[var(--color-text)] uppercase tracking-wide mb-3">
+              Children &amp; teens ({children.length})
             </h2>
-            <div className="space-y-3">
-              {children!.map(child => {
+            <ul className="flex flex-col gap-3">
+              {children.map(child => {
                 const bal = balanceMap[child.id];
                 return (
-                  <div key={child.id} className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between">
-                    <div>
-                      <p className="font-semibold text-gray-800">{child.display_name}</p>
-                      <p className="text-xs text-gray-400 capitalize">
-                        {child.life_stage} · Level {child.virtue_level} · Skin: {child.skin.replace('_', ' ')}
+                  <li
+                    key={child.id}
+                    className="card p-4 flex items-center justify-between gap-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-semibold text-[var(--color-text)] truncate">
+                        {child.display_name}
+                      </p>
+                      <p className="text-xs opacity-55 text-[var(--color-text)]">
+                        {stageIcon(child.life_stage as LifeStage)}{' '}
+                        {stageLabel(child.life_stage as LifeStage)}
+                        {' · '}Level {child.virtue_level ?? 1}
+                        {' · '}{skinName(child.skin)}
                       </p>
                       {bal && (
-                        <p className="text-xs text-gray-500 mt-0.5">
-                          {bal.large_balance} Higg · {bal.small_balance} Ginsey · {bal.golden_balance} Golden
+                        <p className="text-xs opacity-70 text-[var(--color-text)] mt-1">
+                          {bal.large_balance} {largeName}
+                          {' · '}{bal.small_balance} {smallName}
+                          {' · '}{bal.golden_balance} {goldenName}
                         </p>
                       )}
                     </div>
-                    <div className="text-2xl">
-                      {child.skin === 'cloud_kingdom' ? '☁️' :
-                       child.skin === 'rainbow_studio' ? '🌈' :
-                       child.skin === 'deep_ocean' ? '🌊' :
-                       child.skin === 'jungle_quest' ? '🌴' :
-                       child.skin === 'zen_garden' ? '🌸' :
-                       child.skin === 'space_command' ? '🚀' :
-                       child.skin === 'pixel_world' ? '🎮' :
-                       child.skin === 'cyber_pulse' ? '⚡' :
-                       child.skin === 'first_person' ? '🎯' : '🌙'}
-                    </div>
-                  </div>
+                    <span className="text-2xl shrink-0" aria-hidden="true">
+                      {SKIN_EMOJI[child.skin] ?? '☁️'}
+                    </span>
+                  </li>
                 );
               })}
-            </div>
+            </ul>
           </section>
         )}
 
-        {/* Add child */}
+        {adults.length > 0 && (
+          <section>
+            <h2 className="text-xs font-semibold opacity-50 text-[var(--color-text)] uppercase tracking-wide mb-3">
+              Adults ({adults.length})
+            </h2>
+            <ul className="flex flex-col gap-2">
+              {adults.map(a => (
+                <li key={a.id} className="card p-4 flex items-center gap-3">
+                  <span className="text-xl" aria-hidden="true">
+                    {stageIcon(a.life_stage as LifeStage)}
+                  </span>
+                  <span className="font-medium text-[var(--color-text)]">{a.display_name}</span>
+                  <span className="text-xs opacity-50 text-[var(--color-text)] capitalize">
+                    {a.role.replace('_', ' ')}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         <section>
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-            Add a Child
+          <h2 className="text-xs font-semibold opacity-50 text-[var(--color-text)] uppercase tracking-wide mb-3">
+            Add someone
           </h2>
-          <div className="bg-white rounded-2xl p-5 shadow-sm">
+          <div className="card p-5">
             <CreateChildForm />
           </div>
         </section>

@@ -255,11 +255,23 @@ create table subscriptions (
 
 -- ROW LEVEL SECURITY
 
+-- Helper: SECURITY DEFINER breaks recursion — all policies use this instead of
+-- querying family_members directly (which would re-trigger its own RLS policy).
+create or replace function get_my_family_id()
+returns uuid language sql security definer stable as $$
+  select family_id from family_members where user_id = auth.uid() limit 1;
+$$;
+
+-- FAMILIES
+-- created_by lets the creator SELECT their new family before joining family_members
+alter table families add column if not exists
+  created_by uuid references auth.users(id) default auth.uid();
+
 alter table families enable row level security;
 create policy "Family members can read own family" on families
-  for select using (
-    id in (select family_id from family_members where user_id = auth.uid())
-  );
+  for select using (created_by = auth.uid() or id = get_my_family_id());
+create policy "Authenticated users can create family" on families
+  for insert with check (auth.uid() is not null);
 create policy "Parents can update own family" on families
   for update using (
     id in (
@@ -268,35 +280,33 @@ create policy "Parents can update own family" on families
     )
   );
 
+-- PROFILES
 alter table profiles enable row level security;
 create policy "Family members can read profiles" on profiles
-  for select using (
-    family_id in (select family_id from family_members where user_id = auth.uid())
-  );
+  for select using (user_id = auth.uid() or family_id = get_my_family_id());
+create policy "Users can create their own profile" on profiles
+  for insert with check (user_id = auth.uid());
 create policy "Own profile update" on profiles
   for update using (user_id = auth.uid());
 
+-- FAMILY_MEMBERS
 alter table family_members enable row level security;
 create policy "Own family members visible" on family_members
-  for select using (
-    family_id in (select family_id from family_members where user_id = auth.uid())
-  );
+  for select using (user_id = auth.uid() or family_id = get_my_family_id());
+create policy "Users can join a family" on family_members
+  for insert with check (user_id = auth.uid());
 
+-- BALANCE ACCOUNTS
 alter table balance_accounts enable row level security;
 create policy "Own family balances" on balance_accounts
   for all using (
-    profile_id in (
-      select id from profiles where family_id in (
-        select family_id from family_members where user_id = auth.uid()
-      )
-    )
+    profile_id in (select id from profiles where family_id = get_my_family_id())
   );
 
+-- TASKS
 alter table tasks enable row level security;
 create policy "Own family tasks" on tasks
-  for select using (
-    family_id in (select family_id from family_members where user_id = auth.uid())
-  );
+  for select using (family_id = get_my_family_id());
 create policy "Parents manage tasks" on tasks
   for all using (
     family_id in (
@@ -305,78 +315,68 @@ create policy "Parents manage tasks" on tasks
     )
   );
 
+-- TASK COMPLETIONS
 alter table task_completions enable row level security;
 create policy "Own family completions" on task_completions
   for all using (
-    profile_id in (
-      select id from profiles where family_id in (
-        select family_id from family_members where user_id = auth.uid()
-      )
-    )
+    profile_id in (select id from profiles where family_id = get_my_family_id())
   );
 
+-- TRANSACTIONS (all operations — inserts happen client-side on earn/spend)
 alter table transactions enable row level security;
 create policy "Own family transactions" on transactions
-  for select using (
-    profile_id in (
-      select id from profiles where family_id in (
-        select family_id from family_members where user_id = auth.uid()
-      )
-    )
+  for all using (
+    profile_id in (select id from profiles where family_id = get_my_family_id())
   );
 
+-- STREAKS
 alter table streaks enable row level security;
 create policy "Own family streaks" on streaks
   for all using (
-    profile_id in (
-      select id from profiles where family_id in (
-        select family_id from family_members where user_id = auth.uid()
-      )
-    )
+    profile_id in (select id from profiles where family_id = get_my_family_id())
   );
 
+-- SIBLING TRADES
 alter table sibling_trades enable row level security;
 create policy "Own family trades" on sibling_trades
   for all using (
-    from_profile in (
-      select id from profiles where family_id in (
-        select family_id from family_members where user_id = auth.uid()
-      )
-    )
+    from_profile in (select id from profiles where family_id = get_my_family_id())
   );
 
+-- BADGES
 alter table badges enable row level security;
 create policy "Badges readable by all authenticated" on badges
   for select using (auth.uid() is not null);
 
+-- PROFILE BADGES
 alter table profile_badges enable row level security;
 create policy "Own family profile badges" on profile_badges
   for all using (
-    profile_id in (
-      select id from profiles where family_id in (
-        select family_id from family_members where user_id = auth.uid()
-      )
-    )
+    profile_id in (select id from profiles where family_id = get_my_family_id())
   );
 
+-- LIFE ITEMS
 alter table life_items enable row level security;
 create policy "Own profile life items" on life_items
   for all using (
     profile_id in (select id from profiles where user_id = auth.uid())
   );
 
+-- NUDGES
 alter table nudges enable row level security;
 create policy "Own profile nudges" on nudges
   for all using (
     profile_id in (select id from profiles where user_id = auth.uid())
   );
 
+-- DRAFTS
 alter table drafts enable row level security;
 create policy "Own profile drafts" on drafts
   for all using (
     profile_id in (select id from profiles where user_id = auth.uid())
   );
 
+-- SUBSCRIPTIONS
 alter table subscriptions enable row level security;
 create policy "Own family subscriptions" on subscriptions
   for select using (
@@ -386,26 +386,21 @@ create policy "Own family subscriptions" on subscriptions
     )
   );
 
+-- PRIVILEGES
 alter table privileges enable row level security;
 create policy "Own family privileges" on privileges
-  for all using (
-    family_id in (select family_id from family_members where user_id = auth.uid())
-  );
+  for all using (family_id = get_my_family_id());
 
+-- CASHOUT WINDOWS
 alter table cashout_windows enable row level security;
 create policy "Own family cashout windows" on cashout_windows
-  for all using (
-    family_id in (select family_id from family_members where user_id = auth.uid())
-  );
+  for all using (family_id = get_my_family_id());
 
+-- SCREEN TIME SESSIONS
 alter table screen_time_sessions enable row level security;
 create policy "Own family screen time" on screen_time_sessions
   for all using (
-    profile_id in (
-      select id from profiles where family_id in (
-        select family_id from family_members where user_id = auth.uid()
-      )
-    )
+    profile_id in (select id from profiles where family_id = get_my_family_id())
   );
 
 -- SEED DATA — BADGES
@@ -507,11 +502,7 @@ create table cashout_requests (
 alter table cashout_requests enable row level security;
 create policy "Own family cashout requests" on cashout_requests
   for all using (
-    profile_id in (
-      select id from profiles where family_id in (
-        select family_id from family_members where user_id = auth.uid()
-      )
-    )
+    profile_id in (select id from profiles where family_id = get_my_family_id())
   );
 
 -- 005 — ATOMIC BALANCE ADJUSTMENTS

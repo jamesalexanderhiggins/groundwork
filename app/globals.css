@@ -10,36 +10,166 @@
 @import "../styles/skins/zen_garden.css";
 @import "../styles/skins/dark_knight.css";
 
-/* Default skin variables (Cloud Kingdom) */
+/* ── Default theme (Cloud Kingdom) ─────────────────────────────────── */
 :root {
-  --color-primary:  #7C9FF5;
-  --color-bg:       #F0F4FF;
-  --color-bg-card:  #FFFFFF;
-  --color-text:     #2D2D5E;
-  --color-accent:   #FFC2D1;
-  --color-reward:   #FFD700;
-  --font-display:   system-ui, sans-serif;
-  --font-body:      system-ui, sans-serif;
+  --color-primary:   #5B7FE8;
+  --color-primary-d: #4463C9;
+  --color-bg:        #F4F7FE;
+  --color-bg-card:   #FFFFFF;
+  --color-text:      #232748;
+  --color-accent:    #F2A9BE;
+  /* Used by cards, inputs and dividers across the app. Derived from the
+     text colour so every skin gets a border that suits its palette. */
+  --color-border:    color-mix(in srgb, var(--color-text) 16%, transparent);
+  --color-reward:    #E9A21B;
+  --color-danger:    #C0392B;
+  --color-success:   #1E8A5F;
+
+  --font-display: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-body:    ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
   --animation-speed: 0.3s;
-  --border-radius:  1rem;
-  --sound-pack:     'cloud';
+  --border-radius:   1rem;
+  --sound-pack:      'cloud';
+
+  --shadow-sm: 0 1px 2px rgb(35 39 72 / 0.06);
+  --shadow:    0 2px 4px rgb(35 39 72 / 0.05), 0 6px 16px -6px rgb(35 39 72 / 0.10);
+  --shadow-lg: 0 4px 8px rgb(35 39 72 / 0.06), 0 16px 32px -12px rgb(35 39 72 / 0.16);
 }
 
 @theme inline {
-  --color-primary:  var(--color-primary);
-  --color-bg:       var(--color-bg);
-  --color-bg-card:  var(--color-bg-card);
-  --color-text:     var(--color-text);
-  --color-accent:   var(--color-accent);
-  --color-reward:   var(--color-reward);
+  --color-primary: var(--color-primary);
+  --color-bg:      var(--color-bg);
+  --color-bg-card: var(--color-bg-card);
+  --color-text:    var(--color-text);
+  --color-accent:  var(--color-accent);
+  --color-border:  var(--color-border);
+  --color-reward:  var(--color-reward);
+  --color-danger:  var(--color-danger);
+  --color-success: var(--color-success);
 }
 
-html, body {
+html {
   height: 100%;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
+  min-height: 100%;
   background-color: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  /* Stop iOS Safari bouncing the whole page behind fixed nav */
+  overscroll-behavior-y: none;
 }
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  letter-spacing: -0.011em;
+}
+
+/* ── Accessibility ─────────────────────────────────────────────────── */
+
+/* Visible focus for keyboard users only */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+:focus:not(:focus-visible) { outline: none; }
+
+/* Respect the OS reduced-motion setting */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Screen-reader-only text that becomes visible on focus */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  padding: 0.75rem 1rem;
+  background: var(--color-bg-card);
+  color: var(--color-text);
+  border-radius: 0 0 var(--border-radius) 0;
+  box-shadow: var(--shadow);
+}
+.skip-link:focus {
+  left: 0;
+}
+
+/* ── Layout helpers ────────────────────────────────────────────────── */
+
+/* Keep fixed bottom nav clear of the iPhone home indicator */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Reserve room for the bottom nav (56px) plus the home indicator */
+.pb-nav {
+  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+.card {
+  background: var(--color-bg-card);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow);
+}
+
+/* ── Motion ────────────────────────────────────────────────────────── */
+
+@keyframes kempt-fade-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+.animate-fade-up {
+  animation: kempt-fade-up var(--animation-speed) ease-out both;
+}
+
+@keyframes kempt-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+.animate-pop {
+  animation: kempt-pop 0.28s ease-out;
+}
+
+@keyframes kempt-shimmer {
+  from { background-position: -200% 0; }
+  to   { background-position:  200% 0; }
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--color-text) 6%, transparent) 25%,
+    color-mix(in srgb, var(--color-text) 12%, transparent) 37%,
+    color-mix(in srgb, var(--color-text) 6%, transparent) 63%
+  );
+  background-size: 400% 100%;
+  animation: kempt-shimmer 1.4s ease-in-out infinite;
+  border-radius: 0.5rem;
+}
+
+/* ── Forms ─────────────────────────────────────────────────────────── */
+
+/* 16px minimum stops iOS zooming the viewport on focus */
+input, select, textarea {
+  font-size: max(16px, 1rem);
+}
+
+/* Strip the number spinners — coin amounts are entered with steppers */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] { -moz-appearance: textfield; }

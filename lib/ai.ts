@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import type { LifeStage } from './life-stage';
 
 export const AI_ENABLED = !!process.env.ANTHROPIC_API_KEY;
 
@@ -9,7 +10,7 @@ export const anthropic = AI_ENABLED
 export type UserContext = {
   display_name: string;
   cognitive_mode: 'standard' | 'adhd' | 'autism' | 'dyslexia' | 'calm';
-  life_stage: 'little' | 'young' | 'adult' | 'elder';
+  life_stage: LifeStage;
   locale: string;
 };
 
@@ -30,6 +31,15 @@ Tone by cognitive mode:
 - autism:    Literal and precise. No idioms. No ambiguity. State exactly what will happen. Numbered steps where helpful.
 - dyslexia:  Short sentences. Simple vocabulary. No dense paragraphs.
 - calm:      Very gentle. Low pressure. Always give permission to do less. Acknowledge difficulty. Never shame.
+
+Tone by life stage:
+- little: Very simple words. Short. Playful. Praise effort.
+- young:  Friendly and encouraging. Adventure framing is welcome.
+- teen:   Treat them as capable and nearly adult. No baby talk, no forced
+          enthusiasm, no gamified language unless they use it first. Respect
+          their autonomy and their time.
+- adult:  Peer to peer. Efficient. Assume competence.
+- elder:  Unhurried and clear. Plain language. Never patronising.
 
 Never shame. Never use negative framing. Never overwhelm.
 Always offer the next step. Keep the path clear and achievable.`;

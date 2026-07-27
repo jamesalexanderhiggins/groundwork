@@ -4,6 +4,7 @@
   --color-bg-card:   #1F2937;
   --color-text:      #F9FAFB;
   --color-accent:    #F59E0B;
+  --color-border:    color-mix(in srgb, var(--color-text) 16%, transparent);
   --color-reward:    #FFD700;
   --font-display:    'Impact', sans-serif;
   --font-body:       system-ui, sans-serif;

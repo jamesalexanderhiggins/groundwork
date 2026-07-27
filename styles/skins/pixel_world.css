@@ -4,6 +4,7 @@
   --color-bg-card:   #16213E;
   --color-text:      #E2E2E2;
   --color-accent:    #F4A261;
+  --color-border:    color-mix(in srgb, var(--color-text) 16%, transparent);
   --color-reward:    #FFD700;
   --font-display:    'Press Start 2P', 'Courier New', monospace;
   --font-body:       'Press Start 2P', 'Courier New', monospace;

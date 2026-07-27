@@ -1,6 +1,9 @@
-import { redirect }                   from 'next/navigation';
+import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
-import { PendingApprovals }           from '@/components/parent/PendingApprovals';
+import { PendingApprovals } from '@/components/parent/PendingApprovals';
+
+export const metadata = { title: 'Approvals' };
 
 export default async function ApprovalsPage() {
   const supabase = await createServerSupabaseClient();
@@ -13,57 +16,61 @@ export default async function ApprovalsPage() {
     .eq('user_id', user.id)
     .single();
 
-  if (!profile || !['parent', 'admin'].includes(profile.role)) {
-    redirect('/dashboard');
-  }
+  if (!profile) redirect('/onboarding');
+  if (!['parent', 'admin'].includes(profile.role)) redirect('/dashboard');
 
-  // Fetch completions that require approval: tasks with requires_approval=true that haven't been approved yet
-  const { data: completions } = await supabase
-    .from('task_completions')
-    .select(`
-      id, profile_id, reward_large, reward_small, reward_golden, note, created_at,
-      profiles ( display_name ),
-      tasks    ( title, requires_approval )
-    `)
-    .is('approved_at', null)
-    .order('created_at', { ascending: true });
-
-  // Filter to only those from this family and where task requires approval
   const { data: familyProfiles } = await supabase
     .from('profiles')
     .select('id')
     .eq('family_id', profile.family_id);
 
-  const familyProfileIds = new Set((familyProfiles ?? []).map(p => p.id));
+  const familyProfileIds = (familyProfiles ?? []).map(p => p.id);
+
+  // Filter in the query rather than in JS, and select `notes` — the column
+  // is not called `note`, and asking for it failed the whole request.
+  const { data: completions } = familyProfileIds.length
+    ? await supabase
+        .from('task_completions')
+        .select(`
+          id, profile_id, reward_large, reward_small, reward_golden,
+          notes, completed_at,
+          profiles!inner ( display_name ),
+          tasks!inner    ( title, requires_approval )
+        `)
+        .is('approved_at', null)
+        .eq('tasks.requires_approval', true)
+        .in('profile_id', familyProfileIds)
+        .order('completed_at', { ascending: true })
+    : { data: [] };
 
   type RawCompletion = {
     id: string; profile_id: string;
     reward_large: number; reward_small: number; reward_golden: number;
-    note?: string; created_at: string;
+    notes?: string | null; completed_at: string;
     profiles: { display_name: string }[] | { display_name: string } | null;
     tasks:    { title: string; requires_approval: boolean }[] | { title: string; requires_approval: boolean } | null;
   };
 
-  const pending = ((completions ?? []) as unknown as RawCompletion[]).filter(c => {
-    if (!familyProfileIds.has(c.profile_id)) return false;
-    const tasksVal = c.tasks;
-    const t = Array.isArray(tasksVal) ? tasksVal[0] : tasksVal;
-    return t?.requires_approval ?? false;
-  });
+  const pending = (completions ?? []) as unknown as RawCompletion[];
 
   return (
-    <main className="min-h-screen bg-gray-50 pb-12">
-      <header className="bg-white shadow-sm px-6 py-5">
+    <main className="min-h-screen bg-[var(--color-bg)] pb-12">
+      <header className="bg-[var(--color-bg-card)] shadow-[var(--shadow-sm)] px-6 py-5">
         <div className="max-w-lg mx-auto">
-          <a href="/dashboard" className="text-indigo-600 text-sm mb-2 inline-block">← Dashboard</a>
-          <div className="flex justify-between items-center">
-            <h1 className="font-bold text-xl text-gray-900">Pending Approvals</h1>
+          <Link href="/dashboard" className="text-[var(--color-primary)] text-sm mb-1 inline-block hover:underline">
+            ← Dashboard
+          </Link>
+          <div className="flex justify-between items-center gap-3">
+            <h1 className="font-bold text-xl text-[var(--color-text)]">Pending approvals</h1>
             {pending.length > 0 && (
-              <span className="bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
+              <span className="bg-[var(--color-danger)] text-white text-xs font-bold rounded-full min-w-[24px] h-6 px-2 flex items-center justify-center">
                 {pending.length}
               </span>
             )}
           </div>
+          <p className="text-sm opacity-55 text-[var(--color-text)] mt-1">
+            Coins are only credited once you approve.
+          </p>
         </div>
       </header>
 

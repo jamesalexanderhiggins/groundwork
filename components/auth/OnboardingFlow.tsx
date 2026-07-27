@@ -18,18 +18,18 @@ interface FamilyData {
   displayName:     string;
 }
 
-const STEPS: Step[] = ['family', 'economy', 'profile', 'done'];
+const STEPS: Step[] = ['family', 'economy', 'profile'];
 
 export function OnboardingFlow() {
-  const t = useTranslations('onboarding');
+  const t  = useTranslations('onboarding');
   const tc = useTranslations('common');
   const router = useRouter();
   const supabase = createClient();
 
-  const [step, setStep]     = useState<Step>('family');
+  const [step, setStep]       = useState<Step>('family');
   const [loading, setLoading] = useState(false);
-  const [error, setError]   = useState('');
-  const [data, setData]     = useState<FamilyData>({
+  const [error, setError]     = useState('');
+  const [data, setData]       = useState<FamilyData>({
     familyName:     '',
     bankName:       'Higgy Bank',
     largeCoinName:  'Higg',
@@ -46,68 +46,100 @@ export function OnboardingFlow() {
     setLoading(true);
     setError('');
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      setError('Session expired. Please sign in again.');
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setError('Your session expired. Please sign in again.');
+        setLoading(false);
+        return;
+      }
+
+      // If a profile already exists (e.g. the user retried after a failure),
+      // don't create a second family — just continue.
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (existingProfile) {
+        setStep('done');
+        setTimeout(() => { router.push('/dashboard'); router.refresh(); }, 1200);
+        return;
+      }
+
+      const { data: family, error: familyErr } = await supabase
+        .from('families')
+        .insert({
+          name:             data.familyName.trim(),
+          bank_name:        data.bankName.trim()       || 'Higgy Bank',
+          large_coin_name:  data.largeCoinName.trim()  || 'Higg',
+          small_coin_name:  data.smallCoinName.trim()  || 'Ginsey',
+          golden_coin_name: data.goldenCoinName.trim() || 'Golden Higg',
+        })
+        .select()
+        .single();
+
+      if (familyErr || !family) {
+        setError(familyErr?.message ?? 'Could not create your family.');
+        setLoading(false);
+        return;
+      }
+
+      const { data: profile, error: profileErr } = await supabase
+        .from('profiles')
+        .insert({
+          user_id:      user.id,
+          family_id:    family.id,
+          display_name: data.displayName.trim(),
+          life_stage:   'adult',
+          role:         'parent',
+          locale:       navigator.language.split('-')[0] || 'en',
+        })
+        .select()
+        .single();
+
+      if (profileErr || !profile) {
+        setError(profileErr?.message ?? 'Could not create your profile.');
+        setLoading(false);
+        return;
+      }
+
+      // family_members must exist before any family-scoped RLS policy will
+      // resolve — without it every subsequent page reads as empty.
+      const { error: memberErr } = await supabase.from('family_members').insert({
+        family_id:  family.id,
+        user_id:    user.id,
+        profile_id: profile.id,
+        role:       'parent',
+      });
+      if (memberErr) {
+        setError(memberErr.message);
+        setLoading(false);
+        return;
+      }
+
+      // Parents get a bank account too — they can hold and gift coins.
+      await Promise.all([
+        supabase.from('balance_accounts').insert({ profile_id: profile.id }),
+        supabase.from('streaks').insert({ profile_id: profile.id }),
+      ]);
+
+      await supabase.rpc('seed_higgins_tasks', {
+        p_family_id:  family.id,
+        p_created_by: profile.id,
+      });
+
+      setStep('done');
+      setTimeout(() => { router.push('/dashboard'); router.refresh(); }, 1600);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Something went wrong. Please try again.');
       setLoading(false);
-      return;
     }
-
-    const { data: family, error: familyErr } = await supabase
-      .from('families')
-      .insert({
-        name:             data.familyName,
-        bank_name:        data.bankName,
-        large_coin_name:  data.largeCoinName,
-        small_coin_name:  data.smallCoinName,
-        golden_coin_name: data.goldenCoinName,
-      })
-      .select()
-      .single();
-
-    if (familyErr || !family) {
-      setError(familyErr?.message ?? 'Failed to create family.');
-      setLoading(false);
-      return;
-    }
-
-    const { data: profile, error: profileErr } = await supabase
-      .from('profiles')
-      .insert({
-        user_id:      user.id,
-        family_id:    family.id,
-        display_name: data.displayName,
-        life_stage:   'adult',
-        role:         'parent',
-        locale:       navigator.language.split('-')[0] || 'en',
-      })
-      .select()
-      .single();
-
-    if (profileErr || !profile) {
-      setError(profileErr?.message ?? 'Failed to create profile.');
-      setLoading(false);
-      return;
-    }
-
-    await supabase.from('family_members').insert({
-      family_id:  family.id,
-      user_id:    user.id,
-      profile_id: profile.id,
-      role:       'parent',
-    });
-
-    await supabase.rpc('seed_higgins_tasks', {
-      p_family_id:  family.id,
-      p_created_by: profile.id,
-    });
-
-    setLoading(false);
-    setStep('done');
-    setTimeout(() => router.push('/dashboard'), 1500);
   }
 
   const stepIndex = STEPS.indexOf(step);
+  const canFinish = data.displayName.trim().length > 0;
 
   return (
     <div className="flex flex-col gap-6">
@@ -116,19 +148,23 @@ export function OnboardingFlow() {
         <p className="text-sm opacity-60 mt-1 text-[var(--color-text)]">{t('lets_set_up')}</p>
       </div>
 
-      <div className="flex gap-1 mb-2">
-        {STEPS.filter(s => s !== 'done').map((s, i) => (
-          <div
-            key={s}
-            className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${
-              i <= stepIndex - (step === 'done' ? 0 : 0) ? 'bg-[var(--color-primary)]' : 'bg-[var(--color-accent)]/30'
-            }`}
-          />
-        ))}
-      </div>
+      {step !== 'done' && (
+        <div className="flex gap-1.5" aria-label={`Step ${stepIndex + 1} of ${STEPS.length}`}>
+          {STEPS.map((s, i) => (
+            <div
+              key={s}
+              className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${
+                i <= stepIndex ? 'bg-[var(--color-primary)]' : 'bg-[var(--color-accent)]/30'
+              }`}
+            />
+          ))}
+        </div>
+      )}
 
       {error && (
-        <div role="alert" className="text-sm text-red-600 bg-red-50 rounded-lg p-3">{error}</div>
+        <div role="alert" className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">
+          {error}
+        </div>
       )}
 
       {step === 'family' && (
@@ -138,6 +174,7 @@ export function OnboardingFlow() {
             placeholder={t('family_name_placeholder')}
             value={data.familyName}
             onChange={e => update('familyName', e.target.value)}
+            autoFocus
             required
           />
           <Input
@@ -195,16 +232,22 @@ export function OnboardingFlow() {
             placeholder={t('your_name_placeholder')}
             value={data.displayName}
             onChange={e => update('displayName', e.target.value)}
+            autoFocus
             required
           />
           <div className="flex gap-2">
-            <Button variant="secondary" onClick={() => setStep('economy')} className="flex-1">
+            <Button
+              variant="secondary"
+              onClick={() => setStep('economy')}
+              disabled={loading}
+              className="flex-1"
+            >
               {tc('back')}
             </Button>
             <Button
               onClick={handleFinish}
               loading={loading}
-              disabled={!data.displayName.trim()}
+              disabled={!canFinish}
               className="flex-1"
             >
               {tc('done')}

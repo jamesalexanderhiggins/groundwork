@@ -3,6 +3,20 @@
 import { revalidatePath } from 'next/cache';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
 import { toCashValue, type FamilyRates } from '@/lib/economy';
+import { awardCashoutBadge } from '@/app/actions/virtue';
+
+type SupabaseClient = Awaited<ReturnType<typeof createServerSupabaseClient>>;
+
+async function caller(supabase: SupabaseClient) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data } = await supabase
+    .from('profiles')
+    .select('id, family_id, role')
+    .eq('user_id', user.id)
+    .single();
+  return data;
+}
 
 export async function getActiveCashoutWindow(familyId: string) {
   const supabase = await createServerSupabaseClient();
@@ -27,15 +41,25 @@ export async function requestCashout(
   goldenAmount: number,
 ) {
   const supabase = await createServerSupabaseClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: 'Unauthorized' };
+  const me = await caller(supabase);
+  if (!me) return { error: 'Unauthorized' };
+
+  // Negative amounts previously passed straight through to adjust_balance,
+  // which would ADD coins and mint free cash.
+  const large  = Math.floor(largeAmount);
+  const golden = Math.floor(goldenAmount);
+
+  if (!Number.isFinite(large) || !Number.isFinite(golden)) return { error: 'Invalid amount.' };
+  if (large < 0 || golden < 0)     return { error: 'Amounts cannot be negative.' };
+  if (large === 0 && golden === 0) return { error: 'Choose at least one coin to cash out.' };
 
   const { data: profile } = await supabase
     .from('profiles')
     .select('family_id')
     .eq('id', profileId)
     .single();
-  if (!profile) return { error: 'Profile not found' };
+  if (!profile)                             return { error: 'Profile not found' };
+  if (profile.family_id !== me.family_id)   return { error: 'Profile not in your family.' };
 
   const { data: family } = await supabase
     .from('families')
@@ -51,68 +75,96 @@ export async function requestCashout(
     .from('balance_accounts')
     .select('*')
     .eq('profile_id', profileId)
-    .single();
+    .maybeSingle();
   if (!balance) return { error: 'Balance not found' };
 
-  // Enforce max_percent cap
+  if (balance.large_balance < large || balance.golden_balance < golden) {
+    return { error: 'Not enough coins.' };
+  }
+
   const rates: FamilyRates = {
-    smallPerLarge: family.small_per_large, largeCashValue: family.large_cash_value,
-    goldenCashValue: family.golden_cash_value, largeMinutes: family.large_minutes,
-    smallMinutes: family.small_minutes, goldenMinutes: family.golden_minutes,
+    smallPerLarge:   family.small_per_large,
+    largeCashValue:  family.large_cash_value,
+    goldenCashValue: family.golden_cash_value,
+    largeMinutes:    family.large_minutes,
+    smallMinutes:    family.small_minutes,
+    goldenMinutes:   family.golden_minutes,
   };
 
   const totalCashable = toCashValue(
-    { large: balance.large_balance, small: 0, golden: balance.golden_balance }, rates
+    { large: balance.large_balance, small: 0, golden: balance.golden_balance }, rates,
   );
-  const maxCash = totalCashable * (window.max_percent / 100);
-  const requestedCash = toCashValue({ large: largeAmount, small: 0, golden: goldenAmount }, rates);
+  const maxCash       = totalCashable * (window.max_percent / 100);
+  const requestedCash = toCashValue({ large, small: 0, golden }, rates);
 
   if (requestedCash > maxCash) {
-    return { error: `Maximum cashout is $${maxCash.toFixed(2)} (${window.max_percent}% of balance).` };
+    return { error: `Maximum cashout right now is $${maxCash.toFixed(2)} (${window.max_percent}% of your balance).` };
   }
 
-  // Atomically deduct — prevent overdraw if two cashout requests race
   const { data: deducted } = await supabase.rpc('adjust_balance', {
-    p_profile_id:  profileId,
-    p_large_delta: -largeAmount,
-    p_golden_delta: -goldenAmount,
+    p_profile_id:   profileId,
+    p_large_delta:  -large,
+    p_golden_delta: -golden,
   });
   if (!deducted) return { error: 'Insufficient balance.' };
 
   await supabase.from('transactions').insert({
-    profile_id:  profileId,
-    type:        'cashout',
-    large_delta:  -largeAmount,
-    golden_delta: -goldenAmount,
-    description: `Cashout: $${requestedCash.toFixed(2)}`,
+    profile_id:   profileId,
+    type:         'cashout',
+    large_delta:  -large,
+    golden_delta: -golden,
+    description:  `Cashout: $${requestedCash.toFixed(2)}`,
   });
 
   const { data: request } = await supabase.from('cashout_requests').insert({
-    profile_id:   profileId,
-    large_amount: largeAmount,
-    golden_amount: goldenAmount,
-    cash_value:   requestedCash,
-    window_id:    window.id,
-    status:       'approved', // auto-approved within a window
+    profile_id:    profileId,
+    large_amount:  large,
+    golden_amount: golden,
+    cash_value:    requestedCash,
+    window_id:     window.id,
+    status:        'approved', // auto-approved within an open window
+    approved_at:   new Date().toISOString(),
   }).select().single();
 
+  await awardCashoutBadge(profileId);
+
   revalidatePath('/cashout');
+  revalidatePath('/dashboard');
   return { success: true, cashValue: requestedCash, request };
 }
 
 export async function createCashoutWindow(formData: FormData, familyId: string) {
   const supabase = await createServerSupabaseClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: 'Unauthorized' };
+  const me = await caller(supabase);
+  if (!me) return { error: 'Unauthorized' };
+  if (!['parent', 'admin'].includes(me.role)) {
+    return { error: 'Only parents can open a cashout window.' };
+  }
+  if (me.family_id !== familyId) return { error: 'Not your family.' };
+
+  const label    = ((formData.get('label') as string) ?? '').trim();
+  const opensAt  = formData.get('opens_at')  as string;
+  const closesAt = formData.get('closes_at') as string;
+
+  if (!label)               return { error: 'Give the window a name.' };
+  if (!opensAt || !closesAt) return { error: 'Both open and close times are required.' };
+  if (new Date(closesAt) <= new Date(opensAt)) {
+    return { error: 'The window must close after it opens.' };
+  }
+
+  const maxPercent = Math.min(100, Math.max(0,
+    parseFloat(formData.get('max_percent') as string) || 100));
+  const giftMaxPercent = Math.min(100, Math.max(0,
+    parseFloat(formData.get('gift_max_percent') as string) || 10));
 
   const { error } = await supabase.from('cashout_windows').insert({
-    family_id:       familyId,
-    label:           formData.get('label') as string,
-    opens_at:        formData.get('opens_at') as string,
-    closes_at:       formData.get('closes_at') as string,
-    max_percent:     parseFloat(formData.get('max_percent') as string) || 100,
-    is_gift_window:  formData.get('is_gift_window') === 'true',
-    gift_max_percent: parseFloat(formData.get('gift_max_percent') as string) || 10,
+    family_id:        familyId,
+    label,
+    opens_at:         opensAt,
+    closes_at:        closesAt,
+    max_percent:      maxPercent,
+    is_gift_window:   formData.get('is_gift_window') === 'true',
+    gift_max_percent: giftMaxPercent,
   });
 
   if (error) return { error: error.message };
@@ -149,10 +201,18 @@ export async function approveServiceAct(completionId: string, parentProfileId: s
     : (completion.profiles as { family_id: string } | null)?.family_id;
   if (completionFamilyId !== approver.family_id) return { error: 'Not in your family.' };
 
-  await supabase.from('task_completions').update({
-    approved_by: parentProfileId,
-    approved_at: new Date().toISOString(),
-  }).eq('id', completionId);
+  // Claim the approval first so two parents tapping at once can't double-credit
+  const { data: claimed } = await supabase
+    .from('task_completions')
+    .update({
+      approved_by: parentProfileId,
+      approved_at: new Date().toISOString(),
+    })
+    .eq('id', completionId)
+    .is('approved_at', null)
+    .select('id');
+
+  if (!claimed?.length) return { error: 'Already approved.' };
 
   await supabase.rpc('adjust_balance', {
     p_profile_id:            completion.profile_id,
@@ -164,32 +224,44 @@ export async function approveServiceAct(completionId: string, parentProfileId: s
   });
 
   await supabase.from('transactions').insert({
-    profile_id:  completion.profile_id,
-    type:        completion.reward_golden > 0 ? 'earn_golden' : completion.reward_large > 0 ? 'earn_large' : 'earn_small',
+    profile_id:   completion.profile_id,
+    type:         completion.reward_golden > 0 ? 'earn_golden'
+                : completion.reward_large  > 0 ? 'earn_large'
+                : 'earn_small',
     small_delta:  completion.reward_small,
     large_delta:  completion.reward_large,
     golden_delta: completion.reward_golden,
-    description: 'Service act approved',
+    description:  'Approved by parent',
     reference_id: completionId,
   });
 
   revalidatePath('/parent/approvals');
+  revalidatePath('/dashboard');
   return { success: true };
 }
 
 export async function rejectServiceAct(completionId: string) {
   const supabase = await createServerSupabaseClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: 'Unauthorized' };
-
-  const { data: rejector } = await supabase
-    .from('profiles')
-    .select('family_id, role')
-    .eq('user_id', user.id)
-    .single();
-  if (!rejector || !['parent', 'admin'].includes(rejector.role)) {
+  const me = await caller(supabase);
+  if (!me) return { error: 'Unauthorized' };
+  if (!['parent', 'admin'].includes(me.role)) {
     return { error: 'Not authorized to reject.' };
   }
+
+  // Confirm the completion belongs to this family before deleting
+  const { data: completion } = await supabase
+    .from('task_completions')
+    .select('id, profiles!inner(family_id)')
+    .eq('id', completionId)
+    .is('approved_at', null)
+    .single();
+
+  if (!completion) return { error: 'Not found or already approved.' };
+
+  const famId = Array.isArray(completion.profiles)
+    ? completion.profiles[0]?.family_id
+    : (completion.profiles as { family_id: string } | null)?.family_id;
+  if (famId !== me.family_id) return { error: 'Not in your family.' };
 
   await supabase.from('task_completions').delete().eq('id', completionId);
   revalidatePath('/parent/approvals');

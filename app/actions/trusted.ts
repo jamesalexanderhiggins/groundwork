@@ -2,11 +2,17 @@
 
 import { revalidatePath } from 'next/cache';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
+import { awardGoldenBadge, awardGiftGiverBadge } from '@/app/actions/virtue';
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function inviteTrustedAdult(email: string) {
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: 'Unauthorized' };
+
+  const address = email.trim().toLowerCase();
+  if (!EMAIL_RE.test(address)) return { error: 'That does not look like a valid email address.' };
 
   const { data: parentProfile } = await supabase
     .from('profiles')
@@ -20,30 +26,38 @@ export async function inviteTrustedAdult(email: string) {
 
   const { data: invite, error } = await supabase
     .from('trusted_invitations')
-    .insert({ family_id: parentProfile.family_id, email })
+    .insert({ family_id: parentProfile.family_id, email: address })
     .select()
     .single();
 
   if (error) return { error: error.message };
 
-  const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/join/${invite.token}`;
+  const appUrl    = process.env.NEXT_PUBLIC_APP_URL ?? '';
+  const inviteUrl = `${appUrl}/join/${invite.token}`;
 
-  // Send via Resend if configured
+  // Email delivery is optional — the parent can always copy the link.
+  let emailed = false;
   if (process.env.RESEND_API_KEY) {
-    const { Resend } = await import('resend');
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    await resend.emails.send({
-      from: 'Kempt <noreply@kempt.life>',
-      to:   email,
-      subject: 'You\'ve been invited as a Trusted Adult on Kempt',
-      html: `<p>You've been invited to join a family on Kempt as a Trusted Adult.</p>
-             <p><a href="${inviteUrl}">Accept invitation</a></p>
-             <p>This link expires in 7 days.</p>`,
-    });
+    try {
+      const { Resend } = await import('resend');
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      await resend.emails.send({
+        from:    'Kempt <noreply@kempt.life>',
+        to:      address,
+        subject: 'You have been invited as a Trusted Adult on Kempt',
+        html: `<p>You have been invited to join a family on Kempt as a Trusted Adult.</p>
+               <p><a href="${inviteUrl}">Accept invitation</a></p>
+               <p>This link expires in 7 days.</p>`,
+      });
+      emailed = true;
+    } catch {
+      // Fall back to the copyable link — never fail the invite on email
+      emailed = false;
+    }
   }
 
-  revalidatePath('/dashboard');
-  return { inviteUrl, token: invite.token };
+  revalidatePath('/parent/cashout');
+  return { inviteUrl, token: invite.token, emailed };
 }
 
 export async function acceptInvitation(token: string, displayName: string) {
@@ -51,23 +65,27 @@ export async function acceptInvitation(token: string, displayName: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: 'Please sign in first.' };
 
+  const name = displayName.trim();
+  if (!name) return { error: 'Please enter your name.' };
+
   const { data: invite } = await supabase
     .from('trusted_invitations')
     .select('*')
     .eq('token', token)
     .eq('used', false)
     .gt('expires_at', new Date().toISOString())
-    .single();
+    .maybeSingle();
 
-  if (!invite) return { error: 'Invitation not found or expired.' };
+  if (!invite) return { error: 'This invitation is invalid or has expired.' };
 
-  // Check not already in family
+  // family_members has a composite primary key (family_id, user_id) —
+  // there is no id column to select.
   const { data: existing } = await supabase
     .from('family_members')
-    .select('id')
+    .select('user_id')
     .eq('family_id', invite.family_id)
     .eq('user_id', user.id)
-    .single();
+    .maybeSingle();
 
   if (existing) return { error: 'You are already a member of this family.' };
 
@@ -76,7 +94,7 @@ export async function acceptInvitation(token: string, displayName: string) {
     .insert({
       user_id:      user.id,
       family_id:    invite.family_id,
-      display_name: displayName,
+      display_name: name,
       life_stage:   'adult',
       role:         'trusted_adult',
       locale:       'en',
@@ -86,14 +104,20 @@ export async function acceptInvitation(token: string, displayName: string) {
 
   if (profileErr || !profile) return { error: profileErr?.message ?? 'Failed to create profile.' };
 
-  await supabase.from('family_members').insert({
+  const { error: memberErr } = await supabase.from('family_members').insert({
     family_id:  invite.family_id,
     user_id:    user.id,
     profile_id: profile.id,
     role:       'trusted_adult',
   });
+  if (memberErr) return { error: memberErr.message };
 
-  await supabase.from('trusted_invitations').update({ used: true }).eq('id', invite.id);
+  await Promise.all([
+    supabase.from('balance_accounts').insert({ profile_id: profile.id }),
+    supabase.from('streaks').insert({ profile_id: profile.id }),
+    // Burn the token so the link cannot be reused
+    supabase.from('trusted_invitations').update({ used: true }).eq('id', invite.id),
+  ]);
 
   return { success: true, profileId: profile.id };
 }
@@ -108,46 +132,60 @@ export async function giftGoldenHigg(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: 'Unauthorized' };
 
-  if (amount < 1) return { error: 'Amount must be at least 1.' };
+  const qty = Math.floor(amount);
+  if (!Number.isFinite(qty) || qty < 1) return { error: 'Amount must be at least 1.' };
+  if (qty > 20) return { error: 'You can gift at most 20 at a time.' };
+  if (note && note.length > 200) return { error: 'Message is too long.' };
 
-  // Verify caller owns fromProfileId and is an authorised gifter
   const { data: giver } = await supabase
     .from('profiles')
     .select('family_id, role, display_name')
     .eq('id', fromProfileId)
     .eq('user_id', user.id)
     .single();
+
   if (!giver || !['trusted_adult', 'parent', 'admin'].includes(giver.role)) {
     return { error: 'Not authorized to gift.' };
   }
 
-  // Verify recipient is in the same family
-  const { data: recipientProfile } = await supabase
+  const { data: recipient } = await supabase
     .from('profiles')
     .select('family_id')
     .eq('id', toProfileId)
     .single();
-  if (!recipientProfile || recipientProfile.family_id !== giver.family_id) {
+
+  if (!recipient || recipient.family_id !== giver.family_id) {
     return { error: 'Recipient is not in your family.' };
   }
+  if (fromProfileId === toProfileId) return { error: 'You cannot gift to yourself.' };
 
-  // Credit recipient atomically (gifts are backed by the trusted adult's real money, no coin deduction)
-  await supabase.rpc('adjust_balance', {
+  // Gifts are backed by the trusted adult's own money, so nothing is deducted.
+  const { data: credited } = await supabase.rpc('adjust_balance', {
     p_profile_id:            toProfileId,
-    p_golden_delta:          amount,
-    p_lifetime_golden_delta: amount,
+    p_golden_delta:          qty,
+    p_lifetime_golden_delta: qty,
   });
+  if (!credited) return { error: 'Could not deliver the gift. Please try again.' };
+
+  const giverName = giver.display_name ?? 'Someone';
+  const plural    = qty > 1 ? 's' : '';
 
   await supabase.from('transactions').insert({
-    profile_id:  toProfileId,
-    type:        'gift_golden',
-    golden_delta: amount,
-    description: note
-      ? `${giver?.display_name ?? 'Someone'} gifted you ${amount} Golden Higg${amount > 1 ? 's' : ''}: "${note}"`
-      : `${giver?.display_name ?? 'Someone'} gifted you ${amount} Golden Higg${amount > 1 ? 's' : ''}`,
+    profile_id:   toProfileId,
+    type:         'gift_golden',
+    golden_delta: qty,
+    description:  note
+      ? `${giverName} gifted you ${qty} Golden Higg${plural}: "${note}"`
+      : `${giverName} gifted you ${qty} Golden Higg${plural}`,
     reference_id: fromProfileId,
   });
 
+  await Promise.all([
+    awardGoldenBadge(toProfileId),
+    awardGiftGiverBadge(fromProfileId),
+  ]);
+
   revalidatePath('/trusted');
+  revalidatePath('/dashboard');
   return { success: true };
 }
