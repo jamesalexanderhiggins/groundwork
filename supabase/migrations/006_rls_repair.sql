@@ -294,14 +294,20 @@ declare
   v_rows integer;
   v_allowed boolean;
 begin
-  -- Caller must share a family with the target profile.
-  select exists (
-    select 1
-    from profiles p
-    join family_members fm on fm.family_id = p.family_id
-    where p.id = p_profile_id
-      and fm.user_id = auth.uid()
-  ) into v_allowed;
+  -- Trusted server contexts (Edge Functions, cron, admin scripts) run as
+  -- service_role and have no auth.uid(); they are allowed through.
+  if coalesce(auth.role(), '') = 'service_role' then
+    v_allowed := true;
+  else
+    -- Otherwise the caller must share a family with the target profile.
+    select exists (
+      select 1
+      from profiles p
+      join family_members fm on fm.family_id = p.family_id
+      where p.id = p_profile_id
+        and fm.user_id = auth.uid()
+    ) into v_allowed;
+  end if;
 
   if not v_allowed then
     return false;
