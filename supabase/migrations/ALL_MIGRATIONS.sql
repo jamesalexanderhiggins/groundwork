@@ -45,7 +45,7 @@ create table profiles (
   display_name     text not null,
   avatar_url       text,
   life_stage       text not null
-    check (life_stage in ('little','young','adult','elder')),
+    check (life_stage in ('little','young','teen','adult','elder')),
   cognitive_mode   text not null default 'standard'
     check (cognitive_mode in ('standard','adhd','autism','dyslexia','calm')),
   skin             text not null default 'cloud_kingdom',
